@@ -14,10 +14,19 @@
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Language.VHDL.Codegen.Testbench where
+module Language.VHDL.Codegen.Testbench (
+  TextIO(..),
+  vunitTestbench,
+) where
 
 import Prelude hiding ( id )
 
+import Control.Monad.Fail (MonadFail)
+import Control.Monad.State (MonadState,
+                            StateT,
+                            evalStateT,
+                            get,
+                            put)
 import Data.Fixed.Q
 import Data.List ( zip4 )
 import Data.Proxy
@@ -39,17 +48,34 @@ class TextIO a where
   ioType :: Proxy a -> [V.Subtype]
 
   -- | Convert unpacked textio values to unpacked value of type 'a'
-  fromTextIO :: ToExp e => Proxy a -> [e] -> [V.Exp]
+  fromTextIO :: (ToExp e, MonadFail m) => Proxy a -> [e] -> m [V.Exp]
+  fromTextIO p es = evalStateT (fromTextIOM p) es
 
   -- | Convert unpacked value of type 'a' to unpacked textio values
-  toTextIO :: ToExp e => Proxy a -> [e] -> [V.Exp]
+  toTextIO :: (ToExp e, MonadFail m) => Proxy a -> [e] -> m [V.Exp]
+  toTextIO p es = evalStateT (toTextIOM p) es
+
+  -- | Monadic version of fromTextIO.
+  fromTextIOM :: (ToExp e, MonadFail m) => Proxy a -> StateT [e] m [V.Exp]
+
+  -- | Monadic version of toTextIOM.
+  toTextIOM :: (ToExp e, MonadFail m) => Proxy a -> StateT [e] m [V.Exp]
+
+-- | Consume the first element of the list that is the monad's state.
+consume :: (MonadState [e] m, MonadFail m) => m e
+consume = do
+    es <- get
+    case es of
+      e:es' -> do put es'
+                  return e
+      _ -> fail "empty state"
 
 instance (TextIO a, TextIO b) => TextIO (a, b) where
   ioType _ = ioType (Proxy :: Proxy a) ++ ioType (Proxy :: Proxy b)
 
-  fromTextIO _ ~[x, y] = fromTextIO (Proxy :: Proxy a) [x] ++ fromTextIO (Proxy :: Proxy b) [y]
+  fromTextIOM _ = (++) <$> fromTextIOM (Proxy :: Proxy a) <*> fromTextIOM (Proxy :: Proxy b)
 
-  toTextIO _ ~[x, y] = toTextIO (Proxy :: Proxy a) [x] ++ toTextIO (Proxy :: Proxy b) [y]
+  toTextIOM _ = (++) <$> toTextIOM (Proxy :: Proxy a) <*> toTextIOM (Proxy :: Proxy b)
 
 instance (KnownNat m, KnownNat f) => TextIO (VExp (UQ m f)) where
   ioType _ | f == 0    = [[vtype|integer|]]
@@ -58,13 +84,17 @@ instance (KnownNat m, KnownNat f) => TextIO (VExp (UQ m f)) where
       f :: Integer
       f = natVal (Proxy :: Proxy f)
 
-  fromTextIO _ ~[e] = [[vexp|to_ufixed($e, $(m-1), $(-f))|]]
+  fromTextIOM _ = do
+      e <- consume
+      return [[vexp|to_ufixed($e, $(m-1), $(-f))|]]
     where
       m, f :: Integer
       m = natVal (Proxy :: Proxy m)
       f = natVal (Proxy :: Proxy f)
 
-  toTextIO _ ~[e] = [[vexp|to_real($e)|]]
+  toTextIOM _ = do
+      e <- consume
+      return [[vexp|to_real($e)|]]
 
 instance (KnownNat m, KnownNat f) => TextIO (VExp (Q m f)) where
   ioType _ | f == 0    = [[vtype|integer|]]
@@ -73,13 +103,17 @@ instance (KnownNat m, KnownNat f) => TextIO (VExp (Q m f)) where
       f :: Integer
       f = natVal (Proxy :: Proxy f)
 
-  fromTextIO _ ~[e] = [[vexp|to_sfixed($e, $(m-1), $(-f))|]]
+  fromTextIOM _ = do
+      e <- consume
+      return [[vexp|to_sfixed($e, $(m-1), $(-f))|]]
     where
       m, f :: Integer
       m = natVal (Proxy :: Proxy m)
       f = natVal (Proxy :: Proxy f)
 
-  toTextIO _ ~[e] = [[vexp|to_real($e)|]]
+  toTextIOM _ = do
+      e <- consume
+      return [[vexp|to_real($e)|]]
 
 idName :: V.Id -> String
 idName = prettyCompact . ppr
@@ -95,6 +129,9 @@ vunitTestbench :: forall a b m . (TextIO a, TextIO b, MonadCg m)
                -> Pipeline a b
                -> m [V.DesignUnit]
 vunitTestbench comp entity p = do
+  stiumuli_proc <- genStimuliProc
+  compare_proc  <- genCompareProc
+  write_proc    <- genWriteProc
   return [vfile|
 library ieee;
 use ieee.std_logic_1164.all;
@@ -185,8 +222,10 @@ end architecture test;
     in_assocs  = [[vassoc|$id:v => $id:v|] | (v, _) <- pipe_in p]
     out_assocs = [[vassoc|$id:v => $id:v|] | (v, _) <- pipe_out p]
 
-    stiumuli_proc :: V.CStm
-    stiumuli_proc = [vcstm|
+    genStimuliProc :: m V.CStm
+    genStimuliProc = do
+      read_stms <- genReadStms
+      return [vcstm|
       stimuli: process
         variable rnd : typename RandomPType;
 
@@ -235,14 +274,13 @@ end architecture test;
         read_vs :: [V.Id]
         read_vs = map read_ in_sigs
 
-        read_vals :: [V.Exp]
-        read_vals = fromTextIO (Proxy :: Proxy a) read_vs
-
         read_decls :: [V.Decl]
         read_decls = [[vdecl|variable $id:v : $ty:tau;|] | (v, tau) <- read_vs `zip` read_taus]
 
-        read_stms :: [V.Stm]
-        read_stms = go $ zip3 in_sigs read_vs read_vals
+        genReadStms :: MonadFail m => m [V.Stm]
+        genReadStms = do
+          read_vals <- fromTextIO (Proxy :: Proxy a) read_vs
+          return $ go $ zip3 in_sigs read_vs read_vals
           where
             go :: [(V.Id, V.Id, V.Exp)] -> [V.Stm]
             go [] = []
@@ -263,8 +301,10 @@ end architecture test;
               where
                 lbl = idName sig
 
-    compare_proc :: V.CStm
-    compare_proc = [vcstm|
+    genCompareProc :: m V.CStm
+    genCompareProc = do
+      read_stms <- genReadStms
+      return [vcstm|
       compare: process
         variable rnd : typename RandomPType;
 
@@ -311,17 +351,14 @@ end architecture test;
         read_vs :: [V.Id]
         read_vs = map read_ out_sigs
 
-        read_vals :: [V.Exp]
-        read_vals = fromTextIO (Proxy :: Proxy b) read_vs
-
-        expected_vals :: [V.Exp]
-        expected_vals = toTextIO (Proxy :: Proxy b) out_sigs
-
         read_decls :: [V.Decl]
         read_decls = [[vdecl|variable $id:v : $ty:tau;|] | (v, tau) <- read_vs `zip` read_taus]
 
-        read_stms :: [V.Stm]
-        read_stms = go $ zip4 out_sigs read_vs read_vals expected_vals
+        genReadStms :: m [V.Stm]
+        genReadStms = do
+            read_vals     <- fromTextIO (Proxy :: Proxy b) read_vs
+            expected_vals <- toTextIO (Proxy :: Proxy b) out_sigs
+            return $ go $ zip4 out_sigs read_vs read_vals expected_vals
           where
             go :: [(V.Id, V.Id, V.Exp, V.Exp)] -> [V.Stm]
             go [] = []
@@ -343,8 +380,10 @@ end architecture test;
               where
                 lbl = idName sig
 
-    write_proc :: V.CStm
-    write_proc = [vcstm|
+    genWriteProc :: m V.CStm
+    genWriteProc = do
+      write_stms <- genWriteStms
+      return [vcstm|
       compare: process
         variable rnd : typename RandomPType;
 
@@ -401,14 +440,13 @@ end architecture test;
         write_vs :: [V.Id]
         write_vs = map write_ out_sigs
 
-        write_es :: [V.Exp]
-        write_es = toTextIO (Proxy :: Proxy b) out_sigs
-
         write_decls :: [V.Decl]
         write_decls = [[vdecl|variable $id:v : $ty:tau;|] | (v, tau) <- write_vs `zip` write_taus]
 
-        write_stms :: [V.Stm]
-        write_stms = go $ zip3 out_sigs write_vs write_es
+        genWriteStms :: m [V.Stm]
+        genWriteStms = do
+            write_es <-  toTextIO (Proxy :: Proxy b) out_sigs
+            return $ go $ zip3 out_sigs write_vs write_es
           where
             go :: [(V.Id, V.Id, V.Exp)] -> [V.Stm]
             go [] = []
