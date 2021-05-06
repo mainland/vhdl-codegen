@@ -41,21 +41,23 @@ import Language.VHDL.Codegen.VExp
 
 -- | A package of VHDL values.
 class Pack a where
-    -- | Generate a VBind and associated flat list of VHDL bindings for the
-    -- components of the VBind.
+    -- | Generate a packaged VHDL value and associated flat list of VHDL
+    -- bindings for the components of the packaged VHDL value.
     genPack :: (MonadCg m, ToId v) => [v] -> m (a, [(V.Id, V.Subtype)])
-    genPack vs = evalStateT (runWriterT genPack') vs
+    genPack vs = evalStateT (runWriterT genPackM) vs
 
-    -- | Pack a list of VHDL expressions.
+    -- | Pack a list of VHDL expressions into a packages VHDL value.
     pack :: (ToExp e, MonadFail m) => [(e, V.Subtype)] -> m a
-    pack vs = evalStateT pack' vs
+    pack vs = evalStateT packM vs
 
-    -- | Unpack to a list of VHDL expressions.
+    -- | Unpack a package of VHDL values to a list of VHDL expressions.
     unpack :: a -> [V.Exp]
 
-    genPack' :: (MonadCg m, ToId v) => WriterT [(V.Id, V.Subtype)] (StateT [v] m) a
+    -- | Monad version of genPack.
+    genPackM :: (MonadCg m, ToId v) => WriterT [(V.Id, V.Subtype)] (StateT [v] m) a
 
-    pack' :: (ToExp e, MonadFail m) => StateT [(e, V.Subtype)] m a
+    -- | Monad version of pack.
+    packM :: (ToExp e, MonadFail m) => StateT [(e, V.Subtype)] m a
 
 -- | Consume a single variable name or generate a temporary name.
 getVar :: (ToId v, MonadState [v] m, MonadUnique m) => m V.Id
@@ -76,7 +78,7 @@ consume = do
       _ -> fail "empty state"
 
 instance ToType (Proxy a) => Pack (VExp a) where
-    genPack' = do
+    genPackM = do
         sym <- getVar
         tell [(sym, tau)]
         return (VExp [vexp|$id:sym|])
@@ -84,22 +86,22 @@ instance ToType (Proxy a) => Pack (VExp a) where
         tau :: V.Subtype
         tau = toType (undefined :: Proxy a) noLoc
 
-    pack' = do
+    packM = do
         (e, _tau) <- consume
         return (VExp [vexp|$e|])
 
     unpack e = [toExp e noLoc]
 
 instance (Pack a, Pack b) => Pack (a, b) where
-    genPack' = (,) <$> genPack' <*> genPack'
+    genPackM = (,) <$> genPackM <*> genPackM
 
-    pack' = (,) <$> pack' <*> pack'
+    packM = (,) <$> packM <*> packM
 
     unpack (x, y) = unpack x <> unpack y
 
 instance (Pack a, Pack b, Pack c) => Pack (a, b, c) where
-    genPack' = (,,) <$> genPack' <*> genPack' <*> genPack'
+    genPackM = (,,) <$> genPackM <*> genPackM <*> genPackM
 
-    pack' = (,,) <$> pack' <*> pack' <*> pack'
+    packM = (,,) <$> packM <*> packM <*> packM
 
     unpack (x, y, z) = unpack x <> unpack y <> unpack z
