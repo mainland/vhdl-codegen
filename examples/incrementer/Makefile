@@ -1,0 +1,16 @@
+RUNGHC = stack runghc
+
+.PHONY : all
+all : rtl/incrementer.vhd tb_incrementer.vhd
+
+.PHONY : clean
+clean :
+	rm -f rtl/incrementer.vhd tb_incrementer.vhd
+	rm -rf vunit_out
+
+rtl/incrementer.vhd tb_incrementer.vhd : Main.hs
+	$(RUNGHC) $< -- -p -o rtl/incrementer.vhd -t tb_incrementer.vhd || rm -f rtl/incrementer.vhd tb_incrementer.vhd
+
+.PHONY : test
+test : rtl/incrementer.vhd tb_incrementer.vhd
+	./run.py

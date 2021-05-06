@@ -1,0 +1,6 @@
+.Xil/
+project_1/
+venv/
+vunit_out/
+rtl/divider.vhd
+tb_divider.vhd

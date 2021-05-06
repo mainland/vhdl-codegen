@@ -1,0 +1,7 @@
+.Xil/
+output/
+project_1/
+venv/
+vunit_out/
+rtl/incrementer.vhd
+tb_incrementer.vhd
