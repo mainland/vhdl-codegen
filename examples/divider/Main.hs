@@ -27,7 +27,6 @@ import Data.Proxy
 import Data.Sequence ( Seq )
 import Data.String ( fromString )
 import GHC.TypeLits
-import GHC.TypeLits.Extra (Max)
 import Language.VHDL.Quote
 import qualified Language.VHDL.Syntax as V
 import System.Environment
@@ -50,7 +49,7 @@ main :: IO ()
 main = do
     (conf, args) <- getArgs >>= compilerOpts
     when (not (help conf)) $ do
-      (unit, p :: Pipeline (VExp N, VExp N) (VExp N, VExp (UQ 16 8))) <- evalCg $ nonrestoring conf
+      (unit, p :: Pipeline (VExp N, VExp N) (VExp N, VExp (UQ 17 8))) <- evalCg $ nonrestoring conf
       case output conf of
         Nothing   -> return ()
         Just path -> liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))
@@ -65,7 +64,7 @@ underflow e = testBit' e (fromIntegral (finiteBitSize (undefined :: UQ m f) - 1)
 cast :: forall m m' f f' . (KnownNat m', KnownNat f') => VExp (UQ m f) -> VExp (UQ m' f')
 cast e = resize [vexp|$e|]
 
-nonrestoring :: forall i i' f m . (KnownNat i, KnownNat f, KnownNat (i + f), KnownNat (i' + f), i' ~ (Max (1+i) (i+i)), KnownNat i', MonadCg m)
+nonrestoring :: forall i i' f m . (KnownNat i, KnownNat f, KnownNat (i + f), KnownNat (i' + f), i' ~ (1+i+i), KnownNat i', MonadCg m)
              => Config
              -> m (Seq V.DesignUnit, Pipeline (VExp (UQ i f), VExp (UQ i f)) (VExp (UQ i f), VExp (UQ i' f)))
 nonrestoring conf = withDesignUnit $ do

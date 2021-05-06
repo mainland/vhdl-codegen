@@ -12,7 +12,6 @@ import Data.Bits
 import Data.Proxy (Proxy(..))
 import Data.Fixed.Q
 import GHC.TypeLits
-import GHC.TypeLits.Extra (Max)
 
 cast :: forall m m' f f' . (KnownNat f, KnownNat f') => UQ m f -> UQ m' f'
 cast (UQ x) = UQ (x `shift` fromIntegral (natVal (Proxy :: Proxy f') - natVal (Proxy :: Proxy f)))
@@ -20,7 +19,7 @@ cast (UQ x) = UQ (x `shift` fromIntegral (natVal (Proxy :: Proxy f') - natVal (P
 underflow :: FiniteBits a => a -> Bool
 underflow bits = testBit bits (finiteBitSize bits - 1)
 
-restoring :: forall m f m'. (KnownNat m, KnownNat f, m' ~ (Max (1+m) (m+m)), KnownNat m')
+restoring :: forall m f m'. (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m')
           => (UQ m f, UQ m f)
           -> (UQ m f, UQ m' f)
 restoring (x0, d0) = foldl step (0, cast x) [n-1,n-2..0]
@@ -39,7 +38,7 @@ restoring (x0, d0) = foldl step (0, cast x) [n-1,n-2..0]
         where
           r' = r `shiftL` 1 - d `shiftL` m
 
-nonrestoring :: forall m f m' . (KnownNat m, KnownNat f, m' ~ (Max (1+m) (m+m)), KnownNat m')
+nonrestoring :: forall m f m' . (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m')
              => (UQ m f, UQ m f)
              -> (UQ m f, UQ m' f)
 nonrestoring (x0, d0) = post (foldl step (pre (x0, d0)) [0..n-1])

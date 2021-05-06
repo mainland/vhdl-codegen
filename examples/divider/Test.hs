@@ -11,13 +11,12 @@
 import Data.Fixed.Q
 import Data.Proxy (Proxy(..))
 import GHC.TypeLits
-import GHC.TypeLits.Extra (Max)
 import Test.Hspec
 
 import Test.QuickCheck
 import Divider
 
-prop_divide :: forall m f m' . (KnownNat m, KnownNat f, KnownNat (m+f), m' ~ (Max (1+m) (m+m)), KnownNat m', KnownNat (m'+f))
+prop_divide :: forall m f m' . (KnownNat m, KnownNat f, KnownNat (m+f), m' ~ (1+m+m), KnownNat m', KnownNat (m'+f))
             => ((UQ m f, UQ m f) -> (UQ m f, UQ m' f))
             -> UQ m f
             -> UQ m f
