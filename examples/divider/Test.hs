@@ -49,6 +49,10 @@ restoringSpec = do
         property (prop_divide restoring :: UQ 0 2 -> UQ 0 2 -> Property)
       it "UQ 8 8" $
         property (prop_divide restoring :: UQ 8 8 -> UQ 8 8 -> Property)
+      it "UQ 8 16" $
+        property (prop_divide restoring :: UQ 8 16 -> UQ 8 16 -> Property)
+      it "UQ 16 8" $
+        property (prop_divide restoring :: UQ 16 8 -> UQ 16 8 -> Property)
 
 nonrestoringSpec :: Spec
 nonrestoringSpec = do
@@ -61,3 +65,7 @@ nonrestoringSpec = do
         property (prop_divide nonrestoring :: UQ 0 2 -> UQ 0 2 -> Property)
       it "UQ 8 8" $
         property (prop_divide nonrestoring :: UQ 8 8 -> UQ 8 8 -> Property)
+      it "UQ 8 16" $
+        property (prop_divide nonrestoring :: UQ 8 16 -> UQ 8 16 -> Property)
+      it "UQ 16 8" $
+        property (prop_divide nonrestoring :: UQ 16 8 -> UQ 16 8 -> Property)
