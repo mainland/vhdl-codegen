@@ -33,7 +33,7 @@ module CORDIC (
 
 import Data.Bits ( Bits(shift) )
 import Data.Fixed.Q ( Q )
-import GHC.TypeLits ( KnownNat, type (+) )
+import GHC.TypeLits ( KnownNat, type (+), type (<=) )
 
 -- | A type that supports a generalized bit shift operation.
 class Floating a => GenShift a where
@@ -44,7 +44,7 @@ instance GenShift Float where
 
 instance GenShift Double where
 
-instance (KnownNat m, KnownNat f, KnownNat (m+f), KnownNat (1+m+f), f ~ (1+f')) => GenShift (Q m f) where
+instance (KnownNat m, KnownNat f, KnownNat (m+f), KnownNat (1+m+f), 1 <= f) => GenShift (Q m f) where
     genshift = shift
 
 data Mode = Rotation | Vectoring
