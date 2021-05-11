@@ -5,9 +5,7 @@ extra-deps:
 - long-double-0.1.1
 - ref-fd-0.4.0.2
 - rounded-1.1
-- /home/mainland/projects/fixed-q
-- /home/mainland/projects/language-vhdl-quote
-# - git: https://github.com/mainland/fixed-q.git
-#   commit: 26664dbc443a9b3c18e69f7b7609f3be12f8a926
-# - git: https://github.com/mainland/language-vhdl-quote.git
-#   commit: d35e0accec7cead0dbf698274466c272f37fca64
+- git: https://github.com/mainland/fixed-q.git
+  commit: e761a133a1af7ca54c2275e2c2a249069962e6d4
+- git: https://github.com/mainland/language-vhdl-quote.git
+  commit: d35e0accec7cead0dbf698274466c272f37fca64
