@@ -27,22 +27,22 @@ library
     containers             >= 0.4   && < 0.7,
     exception-mtl          >= 0.3   && < 0.5,
     exception-transformers >= 0.3   && < 0.5,
-    extra                  >= 1.6   && < 1.7,
+    extra                  >= 1.6   && < 1.8,
     fixed-q                >= 0.1   && < 0.2,
-    haskell-src-exts       >= 1.21  && < 1.22,
+    haskell-src-exts       >= 1.21  && < 1.24,
     haskell-src-meta       >= 0.4   && < 0.9,
     language-vhdl-quote    >= 0.1   && < 0.2,
     mainland-pretty        >= 0.6   && < 0.8,
     mtl                    >= 2.0   && < 3,
     primitive              >= 0.6   && < 0.8,
-    ref-fd                 >= 0.3   && < 0.5,
-    srcloc                 >= 0.4   && < 0.6,
+    ref-fd                 >= 0.3   && < 0.6,
+    srcloc                 >= 0.4   && < 0.7,
     syb                    >= 0.3   && < 0.8,
     symbol                 >= 0.1   && < 0.3,
     text                   >= 1.2   && < 1.3,
     transformers           >= 0.2   && < 0.6,
     template-haskell,
-    QuickCheck             >= 2.13  && < 2.14
+    QuickCheck             >= 2.13  && < 2.15
 
   exposed-modules:
     Control.Monad.Uniq
@@ -73,7 +73,7 @@ executable cordic
     language-vhdl-quote >= 0.1  && < 0.2,
     mainland-pretty     >= 0.7  && < 0.8,
     numeric-extras      >= 0.1  && < 0.2,
-    srcloc              >= 0.4  && < 0.6,
+    srcloc              >= 0.4  && < 0.7,
     QuickCheck          >= 2.13 && < 2.15
 
   other-modules:
@@ -94,7 +94,7 @@ test-suite cordic-tests
     hspec-core      >= 2.5  && < 2.8,
     mainland-pretty >= 0.6  && < 0.8,
     numeric-extras  >= 0.1  && < 0.2,
-    QuickCheck      >= 2.13 && < 2.14
+    QuickCheck      >= 2.13 && < 2.15
 
   other-modules:
     CORDIC
@@ -112,7 +112,7 @@ executable divider
     fixed-q             >= 0.1 && < 0.2,
     language-vhdl-quote >= 0.1 && < 0.2,
     mainland-pretty     >= 0.7 && < 0.8,
-    srcloc              >= 0.4 && < 0.6
+    srcloc              >= 0.4 && < 0.7
 
   other-modules:
     Opt
@@ -131,7 +131,7 @@ test-suite divider-tests
     hspec           >= 2.5  && < 2.8,
     hspec-core      >= 2.5  && < 2.8,
     mainland-pretty >= 0.6  && < 0.8,
-    QuickCheck      >= 2.13 && < 2.14
+    QuickCheck      >= 2.13 && < 2.15
 
   other-modules:
     Divider
@@ -149,7 +149,7 @@ executable incrementer
     fixed-q             >= 0.1 && < 0.2,
     language-vhdl-quote >= 0.1 && < 0.2,
     mainland-pretty     >= 0.7 && < 0.8,
-    srcloc              >= 0.4 && < 0.6
+    srcloc              >= 0.4 && < 0.7
 
   other-modules:
     Opt
