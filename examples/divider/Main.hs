@@ -40,10 +40,10 @@ import Text.PrettyPrint.Mainland
     ( comma, punctuate, folddoc, prettyCompact, hPutDoc, Doc )
 import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
-import Language.VHDL.Codegen.Gensym
 import Language.VHDL.Codegen.Lift
 import Language.VHDL.Codegen.Monad
 import Language.VHDL.Codegen.Pipeline
+import Language.VHDL.Codegen.Pipeline.Testbench
 import Language.VHDL.Codegen.Testbench
 import Language.VHDL.Codegen.VExp
 
