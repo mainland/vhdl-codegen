@@ -9,8 +9,11 @@ clean :
 	rm -rf vunit_out
 
 rtl/divider.vhd tb_divider.vhd : Main.hs
-	$(RUNGHC) $< -- -o rtl/divider.vhd -t tb_divider.vhd || rm -f rtl/divider.vhd tb_divider.vhd
+	$(RUNGHC) $< -- -o rtl/divider.vhd -t tb_divider.vhd || rm -f $@
+
+data/in.csv data/out.csv : Main.hs
+	$(RUNGHC) $< -- -n 100 --tvinput data/in.csv --tvoutput data/out.csv || rm -f $@
 
 .PHONY : test
-test : rtl/divider.vhd tb_divider.vhd
+test : rtl/divider.vhd tb_divider.vhd data/in.csv data/out.csv
 	./run.py

@@ -7,26 +7,35 @@ import System.IO
 
 data Variant = Serial | Parallel
 
-data Config = Config { help      :: Bool
-                     , variant   :: Variant
-                     , output    :: Maybe FilePath
-                     , tb_output :: Maybe FilePath
+data Config = Config { help          :: Bool
+                     , variant       :: Variant
+                     , output        :: Maybe FilePath
+                     , tb_output     :: Maybe FilePath
+                     , tv_len        :: Int
+                     , tv_in_output  :: Maybe FilePath
+                     , tv_out_output :: Maybe FilePath
                      }
 
 defaultOptions :: Config
-defaultOptions = Config { help      = False
-                        , variant   = Serial
-                        , output    = Nothing
-                        , tb_output = Nothing
+defaultOptions = Config { help          = False
+                        , variant       = Serial
+                        , output        = Nothing
+                        , tb_output     = Nothing
+                        , tv_len        = 100
+                        , tv_in_output  = Nothing
+                        , tv_out_output = Nothing
                         }
 
 options :: [OptDescr (Config -> Config)]
 options =
-    [ Option ['h'] ["help"]      (NoArg (\conf -> conf { help = True }))                        "show help"
-    , Option ['s'] ["serial"]    (NoArg (\conf -> conf { variant = Serial }))                   "generate serial version"
-    , Option ['p'] ["parallel"]  (NoArg (\conf -> conf { variant = Parallel }))                 "generate parallel version"
-    , Option ['o'] ["output"]    (ReqArg (\path conf -> conf { output = Just path }) "FILE")    "output FILE"
-    , Option ['t'] ["testbench"] (ReqArg (\path conf -> conf { tb_output = Just path }) "FILE") "testbench output FILE"
+    [ Option ['h'] ["help"]      (NoArg (\conf -> conf { help = True }))                            "show help"
+    , Option ['s'] ["serial"]    (NoArg (\conf -> conf { variant = Serial }))                       "generate serial version"
+    , Option ['p'] ["parallel"]  (NoArg (\conf -> conf { variant = Parallel }))                     "generate parallel version"
+    , Option ['o'] ["output"]    (ReqArg (\path conf -> conf { output = Just path }) "FILE")        "output FILE"
+    , Option ['t'] ["testbench"] (ReqArg (\path conf -> conf { tb_output = Just path }) "FILE")     "testbench output FILE"
+    , Option ['n'] ["tvlen"]     (ReqArg (\n conf -> conf { tv_len = read n }) "N")                 "test vector length"
+    , Option []    ["tvinput"]   (ReqArg (\path conf -> conf { tv_in_output = Just path }) "FILE")  "write test vector inputs to FILE"
+    , Option []    ["tvoutput"]  (ReqArg (\path conf -> conf { tv_out_output = Just path }) "FILE") "write test vector outputs to FILE"
     ]
 
 compilerOpts :: [String] -> IO (Config, [String])

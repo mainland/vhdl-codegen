@@ -5,6 +5,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -15,24 +16,29 @@ module Main (
 import Prelude hiding ( id )
 
 import Control.Category ( (>>>), id )
-import Control.Monad ( replicateM )
+import Control.Monad ( forM_, replicateM )
 import Control.Monad.IO.Class ( liftIO )
-import Data.Bits
+import Data.Bits ( FiniteBits(finiteBitSize) )
 import Data.Foldable ( toList )
 import Data.Fixed.Q
+    ( isLteNat, isZeroNat, FixedBits(intBitSize), UQ(UQ) )
 import Data.List ( zip4 )
 import Data.Loc ( noLoc )
-import Data.Maybe ( fromMaybe )
-import Data.Proxy
+import Data.Maybe ( fromMaybe, isJust )
+import Data.Proxy ( Proxy(..) )
+import Data.Ratio ( numerator, denominator, (%) )
 import Data.Sequence ( Seq )
 import Data.String ( fromString )
-import GHC.TypeLits
-import Language.VHDL.Quote
+import Data.Type.Equality ( type (:~:)(..) )
+import GHC.TypeLits ( KnownNat, type (+), type (<=), natVal )
+import Language.VHDL.Quote ( vexp )
 import qualified Language.VHDL.Syntax as V
-import System.Environment
-import System.IO
+import System.Environment ( getArgs )
+import System.IO ( IOMode(WriteMode), hPutStrLn, withFile )
+import Test.QuickCheck ( Arbitrary(..), Gen, choose, generate )
 import Text.PrettyPrint.Mainland
-import Text.PrettyPrint.Mainland.Class
+    ( comma, punctuate, folddoc, prettyCompact, hPutDoc, Doc )
+import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Gensym
 import Language.VHDL.Codegen.Lift
@@ -43,13 +49,17 @@ import Language.VHDL.Codegen.VExp
 
 import Opt
 
-type N = UQ 8 8
+type M = 8
+
+type F = 8
+
+type N = UQ M F
 
 main :: IO ()
 main = do
     (conf, args) <- getArgs >>= compilerOpts
     when (not (help conf)) $ do
-      (unit, p :: Pipeline (VExp N, VExp N) (VExp N, VExp (UQ 17 8))) <- evalCg $ nonrestoring conf
+      (unit, p :: Pipeline (VExp N, VExp N) (VExp N, VExp (UQ (1+M+M) F))) <- evalCg $ nonrestoring conf
       case output conf of
         Nothing   -> return ()
         Just path -> liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))
@@ -57,8 +67,68 @@ main = do
         Nothing   -> return ()
         Just path -> do unit <- evalCg $ vunitTestbench True "tb_divider" p
                         withFile path WriteMode $ \h -> hPutDoc h (ppr unit)
+      when (isJust (tv_in_output conf) || isJust (tv_out_output conf)) $
+        genTestVectors (Proxy :: Proxy N) conf
 
-underflow :: forall m f . (KnownNat m,KnownNat f) => VExp (UQ m f) -> VExp Bool
+csvsep :: [Doc] -> Doc
+csvsep = folddoc (<>) . punctuate comma
+
+data DivPair a = DivPair a a
+  deriving (Eq, Ord, Show)
+
+instance Pretty a => Pretty (DivPair a) where
+    ppr (DivPair n d) = csvsep [ppr n, ppr d]
+
+instance (KnownNat m, KnownNat f) => Arbitrary (DivPair (UQ m f)) where
+    arbitrary = do
+      d <- nonZero
+      n <- case isZeroNat @f of
+             Just Refl -> fromIntegral <$> choose (0, toInteger (2^m * d) :: Integer)
+             Nothing   -> case isLteNat @1 @f of
+                            Just Refl -> do let d' = toRational d
+                                            x <- choose (0, (2^m - 1) * numerator d')
+                                            pure $ fromRational (x % denominator d')
+                            Nothing   -> error "can't happen"
+      return $ DivPair n d
+      where
+        m = natVal (Proxy :: Proxy m)
+
+        nonZero :: Gen (UQ m f)
+        nonZero = do
+          x <- arbitrary
+          if x == 0 then nonZero else pure x
+
+genTestVectors :: forall m f m' f' . (KnownNat m, KnownNat f, KnownNat (m + f), 1 <= f, m' ~ (1+m+m), KnownNat m', KnownNat (m' + f))
+               => Proxy (UQ m f)
+               -> Config
+               -> IO ()
+genTestVectors _ conf = do
+    ps :: [DivPair (UQ m f)] <- generate (replicateM (tv_len conf) arbitrary)
+    let qs = [fquotRem n d | DivPair n d <- ps]
+    case tv_in_output conf of
+      Just path -> withFile path WriteMode $ \h ->
+                   forM_ ps $ \p -> hPutStrLn h $ prettyCompact $ ppr p
+      Nothing -> return ()
+    case tv_out_output conf of
+      Just path -> withFile path WriteMode $ \h ->
+                   forM_ qs $ \(q, r) -> hPutStrLn h $ prettyCompact $ csvsep [ppr q, ppr r]
+      Nothing -> return ()
+  where
+    m, f, n :: Integer
+    m = natVal (Proxy :: Proxy m)
+    f = natVal (Proxy :: Proxy f)
+    n = f + m
+
+fquotRem :: forall m f m'. (KnownNat m, KnownNat f, KnownNat m', m' ~ (1+m+m)) => UQ m f -> UQ m f -> (UQ m f, UQ m' f)
+fquotRem (UQ n) (UQ d) = (UQ q, UQ (r * 2^m))
+  where
+    (q, r) = quotRem (n * 2^f) d
+
+    m, f :: Integer
+    m = natVal (Proxy :: Proxy m)
+    f = natVal (Proxy :: Proxy f)
+
+underflow :: forall m f . (KnownNat m, KnownNat f) => VExp (UQ m f) -> VExp Bool
 underflow e = testBit' e (fromIntegral (finiteBitSize (undefined :: UQ m f) - 1))
 
 cast :: forall m m' f f' . (KnownNat m', KnownNat f') => VExp (UQ m f) -> VExp (UQ m' f')
