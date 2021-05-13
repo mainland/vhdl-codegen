@@ -15,7 +15,10 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Language.VHDL.Codegen.Pipeline.Testbench (
-  vunitTestbench,
+  TestBenchConfig(..),
+  defaultTestBenchConfig,
+
+  vunitTestBench,
 ) where
 
 import Prelude hiding ( id )
@@ -41,13 +44,25 @@ read_, write_ :: V.Id -> V.Id
 read_ = mapId ("read_" ++)
 write_ = mapId ("write_" ++)
 
+data TestBenchConfig = TestBenchConfig
+  { tb_watchdog :: Maybe Int -- ^ Watchdog timeout (in clock periods)
+  , tb_compare  :: Bool      -- ^ True if test bench should compare to output,
+                             -- False to write output
+  }
+
+defaultTestBenchConfig :: TestBenchConfig
+defaultTestBenchConfig = TestBenchConfig
+  { tb_watchdog = Nothing
+  , tb_compare  = True
+  }
+
 -- | Create a VUnit testbench module for a pipeline.
-vunitTestbench :: forall a b m . (TextIO a, TextIO b, MonadCg m)
-               => Bool
+vunitTestBench :: forall a b m . (TextIO a, TextIO b, MonadCg m)
+               => TestBenchConfig
                -> V.Id
                -> Pipeline a b
                -> m [V.DesignUnit]
-vunitTestbench comp entity p = do
+vunitTestBench conf entity p = do
   stiumuli_proc <- genStimuliProc
   compare_proc  <- genCompareProc
   write_proc    <- genWriteProc
@@ -114,11 +129,11 @@ begin
     test_runner_cleanup(runner);
   end process;
 
-  test_runner_watchdog(runner, 5000000*clk_period);
+  $cstms:watchdog
 
   $cstm:stiumuli_proc
 
-  $cstm:(if comp then compare_proc else write_proc)
+  $cstm:(if tb_compare conf then compare_proc else write_proc)
 
   uut: entity work.$id:(pipe_entity p) port map
     ( clk => clk,
@@ -133,6 +148,10 @@ begin
 end architecture test;
 |]
   where
+    watchdog :: [V.CStm]
+    watchdog | Just n <- tb_watchdog conf = [vcstms|test_runner_watchdog(runner, $n*clk_period);|]
+             | otherwise                  = []
+
     in_signals, out_signals :: [V.Decl]
     in_signals  = [[vdecl|signal $id:v : $ty:tau;|] | (v, tau) <- pipe_in p]
     out_signals = [[vdecl|signal $id:v : $ty:tau;|] | (v, tau) <- pipe_out p]
