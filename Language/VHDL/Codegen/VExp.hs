@@ -187,7 +187,7 @@ instance {-# OVERLAPS #-} (KnownNat m, KnownNat f, KnownNat (m + f)) => Num (VEx
     signum _ = error "VExp: signum not implemented"
 
 resize :: forall m f . (KnownNat m, KnownNat f) => V.Exp -> VExp (UQ m f)
-resize e = VExp [vexp|resize($e, $int:(m-1), -$int:f, overflow_style => fixed_wrap)|]
+resize e = VExp [vexp|resize($e, $int:(m-1), $int:(-f), overflow_style => fixed_wrap)|]
   where
     m, f :: Integer
     m = natVal (Proxy :: Proxy m)
@@ -201,7 +201,7 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
 
     e1 ..|.. e2 = VExp [vexp|$e1 or $e2|]
 
-    bit' i = VExp [vexp|to_ufixed($one sll $i, $int:(m-1), -$int:f)|]
+    bit' i = VExp [vexp|to_ufixed($one sll $i, $int:(m-1), $int:(-f))|]
       where
         m, f :: Integer
         m = natVal (Proxy :: Proxy m)
@@ -211,7 +211,7 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
 
     testBit' x i = VExp [vexp|array to_slv($x)($i)|]
 
-    setBit' x i = VExp [vexp|to_ufixed(to_slv($x) or ($one sll $i), $int:(m-1), -$int:f)|]
+    setBit' x i = VExp [vexp|to_ufixed(to_slv($x) or ($one sll $i), $int:(m-1), $int:(-f))|]
       where
         m, f :: Integer
         m = natVal (Proxy :: Proxy m)

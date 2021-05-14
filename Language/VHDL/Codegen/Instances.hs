@@ -43,13 +43,13 @@ bits x
     quote s = '"' : s ++ ['"']
 
 instance (KnownNat m, KnownNat f) => ToType (Proxy (UQ m f)) where
-    toType _ _ = [vtype|ufixed($int:(m-1) downto -$int:f)|]
+    toType _ _ = [vtype|ufixed($int:(m-1) downto $int:(-f))|]
       where
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
 
 instance (KnownNat m, KnownNat f) => ToType (Proxy (Q m f)) where
-    toType _ _ = [vtype|sfixed($int:m downto -$int:f)|]
+    toType _ _ = [vtype|sfixed($int:m downto $int:(-f))|]
       where
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
@@ -63,7 +63,7 @@ instance (KnownNat m, KnownNat f) => ToLit (UQ m f) where
 instance (KnownNat m, KnownNat f) => ToExp (Q m f) where
     toExp n _ = resize [vexp|std_logic_vector'($lit:n)|]
       where
-        resize e = [vexp|to_sfixed($e, $int:(m-1), -$int:f)|]
+        resize e = [vexp|to_sfixed($e, $int:(m-1), $int:(-f))|]
           where
             m, f :: Integer
             m = natVal (Proxy :: Proxy m)
@@ -72,7 +72,7 @@ instance (KnownNat m, KnownNat f) => ToExp (Q m f) where
 instance (KnownNat m, KnownNat f) => ToExp (UQ m f) where
     toExp n _ = resize [vexp|std_logic_vector'($lit:n)|]
       where
-        resize e = [vexp|to_ufixed($e, $int:(m-1), -$int:f)|]
+        resize e = [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
           where
             m, f :: Integer
             m = natVal (Proxy :: Proxy m)
