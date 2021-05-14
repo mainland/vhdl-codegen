@@ -47,13 +47,18 @@ main = do
         Just path -> do let unit = vunitTestbench "tb_incrementer" p
                         withFile path WriteMode $ \h -> hPutDoc h (ppr unit)
 
+type M = 8
+type F = 8
+
+type N = UQ M F
+
 mkIncrementer :: MonadCg m
               => Config
-              -> m (Seq V.DesignUnit, Pipeline (VExp (UQ 8 8)) (VExp (UQ 8 8)))
+              -> m (Seq V.DesignUnit, Pipeline (VExp N) (VExp N))
 mkIncrementer conf = withDesignUnit $ do
     p <- iter "incrementer"
               id
-              (\(x :: VExp (UQ 8 8)) _ -> return $ x + 1)
+              (\(x :: VExp N) _ -> return $ x + 1)
               id
               ["x"]
               ["x"]
