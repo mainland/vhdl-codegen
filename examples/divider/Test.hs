@@ -29,8 +29,8 @@ prop_divide alg x d =
     (q, r) = alg (x, d)
 
     m, f :: Integer
-    m = fromIntegral $ natVal (Proxy :: Proxy m)
-    f = fromIntegral $ natVal (Proxy :: Proxy f)
+    m = natVal (Proxy :: Proxy m)
+    f = natVal (Proxy :: Proxy f)
     n = f + m
 
 main :: IO ()
