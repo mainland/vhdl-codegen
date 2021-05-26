@@ -40,7 +40,7 @@ main = hspec $ do
 
 restoringSpec :: Spec
 restoringSpec = do
-    describe "Restoring division" $ do
+    describe "Restoring division (unsigned)" $ do
       it "UQ 8 0" $
         property (prop_divide restoring :: UQ 8 0 -> UQ 8 0 -> Property)
       it "UQ 0 8" $
@@ -56,7 +56,7 @@ restoringSpec = do
 
 nonrestoringSpec :: Spec
 nonrestoringSpec = do
-    describe "Non-restoring division" $ do
+    describe "Non-restoring division (unsigned)" $ do
       it "UQ 8 0" $
         property (prop_divide nonrestoring :: UQ 8 0 -> UQ 8 0 -> Property)
       it "UQ 0 8" $
