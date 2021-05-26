@@ -187,7 +187,7 @@ instance {-# OVERLAPS #-} (KnownNat m, KnownNat f, KnownNat (m + f)) => Num (VEx
     signum _ = error "VExp: signum not implemented"
 
 resize :: forall m f . (KnownNat m, KnownNat f) => V.Exp -> VExp (UQ m f)
-resize e = VExp [vexp|resize($e, $int:(m-1), $int:(-f), overflow_style => fixed_wrap)|]
+resize e = VExp [vexp|resize($e, $int:(m-1), $int:(-f), round_style => fixed_truncate, overflow_style => fixed_wrap)|]
   where
     m, f :: Integer
     m = natVal (Proxy :: Proxy m)
