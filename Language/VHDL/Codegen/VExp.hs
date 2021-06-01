@@ -5,6 +5,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -226,3 +227,34 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
 
     sra x 0 = x
     sra x i = VExp [vexp|$x sra $i|]
+
+-- | A Lift instance can have any of its values turned into an embedded VExp.
+class Lift t where
+    type Lifted t
+
+    lift :: t -> Lifted t
+
+instance Lift Bool where
+    type Lifted Bool = VExp Bool
+
+    lift = VBool
+
+instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Lift (Q m f) where
+    type Lifted (Q m f) = VExp (Q m f)
+
+    lift = VQ
+
+instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Lift (UQ m f) where
+    type Lifted (UQ m f) = VExp (UQ m f)
+
+    lift = VUQ
+
+instance (Lift a, Lift b) => Lift (a, b)  where
+    type Lifted (a, b) = (Lifted a, Lifted b)
+
+    lift (x, y) = (lift x, lift y)
+
+instance (Lift a, Lift b, Lift c) => Lift (a, b, c)  where
+    type Lifted (a, b, c) = (Lifted a, Lifted b, Lifted c)
+
+    lift (x, y, z) = (lift x, lift y, lift z)
