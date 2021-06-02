@@ -17,6 +17,7 @@
 
 module Language.VHDL.Codegen.VExp where
 
+import Data.Bits ( FiniteBits(finiteBitSize) )
 import Data.Fixed.Q ( Q, UQ )
 import Data.Loc ( (<-->), noLoc, Loc(NoLoc), Located(locOf) )
 import Data.Proxy ( Proxy(..) )
@@ -198,6 +199,8 @@ bits :: String -> V.Exp
 bits s = V.LitE (V.BitStringLit ('"' : s ++ "\"") noLoc) noLoc
 
 instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
+    finiteBitSize' _ = finiteBitSize (undefined :: UQ m f)
+
     e1 ..&.. e2 = VExp [vexp|$e1 and $e2|]
 
     e1 ..|.. e2 = VExp [vexp|$e1 or $e2|]

@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Language.VHDL.Codegen.Lift
--- Copyright   :  (c) 2015-2020 Drexel University
+-- Copyright   :  (c) 2015-2021 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
@@ -58,6 +58,9 @@ infixl 7 ..&..
 infixl 8 `sla`, `sra`
 
 class LiftBits f a where
+    -- | Return the number of bits in the type of the argument.
+    finiteBitSize' :: f a -> Int
+
     -- | Bitwise \"and\"
     (..&..) :: Bits a => f a -> f a -> f a
 
