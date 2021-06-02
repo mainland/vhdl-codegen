@@ -188,13 +188,6 @@ instance {-# OVERLAPS #-} (KnownNat m, KnownNat f, KnownNat (m + f)) => Num (VEx
 
     signum _ = error "VExp: signum not implemented"
 
-resize :: forall m f . (KnownNat m, KnownNat f) => V.Exp -> VExp (UQ m f)
-resize e = VExp [vexp|resize($e, $int:(m-1), $int:(-f), round_style => fixed_truncate, overflow_style => fixed_wrap)|]
-  where
-    m, f :: Integer
-    m = natVal (Proxy :: Proxy m)
-    f = natVal (Proxy :: Proxy f)
-
 bits :: String -> V.Exp
 bits s = V.LitE (V.BitStringLit ('"' : s ++ "\"") noLoc) noLoc
 
@@ -230,6 +223,17 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
 
     sra x 0 = x
     sra x i = VExp [vexp|$x sra $i|]
+
+-- | A fixed-point VHDL type.
+class Fixed a where
+    resize :: ToExp e => e -> a
+
+instance (KnownNat m, KnownNat f) => Fixed (VExp (UQ m f)) where
+    resize e = VExp [vexp|resize($e, $int:(m-1), $int:(-f), round_style => fixed_truncate, overflow_style => fixed_wrap)|]
+      where
+        m, f :: Integer
+        m = natVal (Proxy :: Proxy m)
+        f = natVal (Proxy :: Proxy f)
 
 -- | A Lift instance can have any of its values turned into an embedded VExp.
 class Lift t where
