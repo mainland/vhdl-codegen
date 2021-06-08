@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -16,6 +17,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Language.VHDL.Codegen.Trans where
+
+import Prelude
 
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.Extra (notM, whenM)
@@ -33,12 +36,13 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Uniq (MonadUnique(..))
 import Data.Foldable (toList)
 import Data.IORef (IORef)
-import Data.Loc (noLoc)
+import Data.Loc (noLoc, srclocOf, srcspan)
 import Data.Set (Set)
 import Data.Sequence (Seq)
 import Data.Sequence as Seq
 import Data.Sequence ((|>))
 import qualified Data.Set as Set
+import Data.String ( fromString )
 import Language.VHDL.Quote
 import Language.VHDL.Syntax
 
@@ -244,19 +248,58 @@ forS i_name rng k = do
                    $stms:(toList ss)
                  end loop;|]
 
--- | Assign a variable
+-- | Assign an expression to a variable
 assign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
-assign v e =
-    case toExp e noLoc of
-        [vexp|ifte($c, $th, $el)|] -> append [vstm|$id:v := $th when $c else $el;|]
-        _ -> append [vstm|$id:v := $e;|]
+assign v e = append [vstm|$id:v := $cond:cond;|]
+  where
+    cond :: Conditional Exp
+    cond = toConditionalE (toExp e noLoc)
 
--- | Assign a signal
+-- | Assign an expression to a signal
 sigassign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
-sigassign v e =
-    case toExp e noLoc of
-        [vexp|ifte($c, $th, $el)|] -> append [vstm|$id:v <= $th when $c else $el;|]
-        _ -> append [vstm|$id:v <= $e;|]
+sigassign v e0 = append [vstm|$id:v <= $cond:cond;|]
+  where
+    cond :: Conditional Waveform
+    cond = fmap mkWaves (toConditionalE (toExp e0 noLoc))
+
+    mkWaves :: Exp -> Waveform
+    mkWaves e = [Wave (Just e) Nothing (srclocOf e)]
+
+-- | Convert a (possibly conditional) expression to a @'Conditional' 'Exp'@.
+toConditionalE :: Exp -> Conditional Exp
+toConditionalE [vexp|ifte($c0, $th0, $el0)|] =
+    ifteCond c0 (toConditionalE th0) (toConditionalE el0)
+  where
+    ifteCond :: Exp -> Conditional Exp -> Conditional Exp -> Conditional Exp
+    ifteCond _ NilC{}             _   = error "can't happen"
+    ifteCond _ AntiCond{}         _   = error "can't happen"
+    ifteCond c (FinC e l)         th  = GuardC e c th (l `srcspan` th)
+    ifteCond c (GuardC e c' th l) th' = GuardC e [vexp|$c and $c'|] th'' (l `srcspan` th'')
+      where
+        th'' = ifteCond c th th'
+
+toConditionalE e = FinC e (srclocOf e)
+
+-- The alternate implementations of assignment use if-then-else statements
+-- instead of conditionals.
+
+-- | Assign an expression to a variable
+assign' :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
+assign' v e0 = go (toExp e0 noLoc)
+  where
+    go [vexp|ifte($c, $th, $el)|] = if c
+                                    then assign v th
+                                    else assign v el
+    go e                          = append [vstm|$id:v := $e;|]
+
+-- | Assign an expression to a signal
+sigassign' :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
+sigassign' v e0 = go (toExp e0 noLoc)
+  where
+    go [vexp|ifte($c, $th, $el)|] = if c
+                                    then sigassign v th
+                                    else sigassign v el
+    go e                          = append [vstm|$id:v <= $e;|]
 
 -- | Add a variable declaration
 var :: MonadCg m
