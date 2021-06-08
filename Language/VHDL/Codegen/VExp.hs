@@ -48,6 +48,13 @@ data VExp a where
     -- | VHDL expression
     VExp :: V.Exp -> VExp a
 
+ifte :: VExp Bool -> VExp a -> VExp a -> VExp a
+ifte (VBool True)  t _ = t
+ifte (VBool False) _ e = e
+ifte c t e
+    | t == e           = t
+    | otherwise        = VIfte c t e
+
 deriving instance Eq (VExp a)
 
 deriving instance Show (VExp a)
@@ -80,14 +87,15 @@ instance ToExp (VExp a) where
 instance IfThenElse (VExp Bool) (VExp a) where
     ifThenElse (VBool True)  t _ = t
     ifThenElse (VBool False) _ e = e
-    ifThenElse c             t e = VIfte c t e
+    ifThenElse c             t e = ifte c t e
 
 instance (IfThenElse (VExp Bool) (VExp a),
           IfThenElse (VExp Bool) (VExp b)) => IfThenElse (VExp Bool) (VExp a, VExp b) where
     ifThenElse (VBool True)  t _ = t
     ifThenElse (VBool False) _ e = e
 
-    ifThenElse c (t1,t2) (e1,e2)= (VIfte c t1 e1, VIfte c t2 e2)
+    ifThenElse c (t1,t2) (e1,e2) =
+        (ifte c t1 e1, ifte c t2 e2)
 
 instance (IfThenElse (VExp Bool) (VExp a),
           IfThenElse (VExp Bool) (VExp b),
@@ -95,7 +103,31 @@ instance (IfThenElse (VExp Bool) (VExp a),
     ifThenElse (VBool True)  t _ = t
     ifThenElse (VBool False) _ e = e
 
-    ifThenElse c (t1,t2,t3) (e1,e2,e3)= (VIfte c t1 e1, VIfte c t2 e2, VIfte c t3 e3)
+    ifThenElse c (t1,t2,t3) (e1,e2,e3) =
+        (ifte c t1 e1, ifte c t2 e2, ifte c t3 e3)
+
+instance (IfThenElse (VExp Bool) (VExp s),
+          IfThenElse (VExp Bool) (VExp t),
+          IfThenElse (VExp Bool) (VExp u),
+          IfThenElse (VExp Bool) (VExp v))
+       => IfThenElse (VExp Bool) (VExp s, VExp t, VExp u, VExp v) where
+    ifThenElse (VBool True)  t _ = t
+    ifThenElse (VBool False) _ e = e
+
+    ifThenElse c (t1,t2,t3,t4) (e1,e2,e3,e4) =
+        (ifte c t1 e1, ifte c t2 e2, ifte c t3 e3, ifte c t4 e4)
+
+instance (IfThenElse (VExp Bool) (VExp s),
+          IfThenElse (VExp Bool) (VExp t),
+          IfThenElse (VExp Bool) (VExp u),
+          IfThenElse (VExp Bool) (VExp v),
+          IfThenElse (VExp Bool) (VExp w))
+       => IfThenElse (VExp Bool) (VExp s, VExp t, VExp u, VExp v, VExp w) where
+    ifThenElse (VBool True)  t _ = t
+    ifThenElse (VBool False) _ e = e
+
+    ifThenElse c (t1,t2,t3,t4,t5) (e1,e2,e3,e4,e5) =
+        (ifte c t1 e1, ifte c t2 e2, ifte c t3 e3, ifte c t4 e4, ifte c t5 e5)
 
 instance LiftEq VExp where
     VBool x  .==. VBool y = VBool (x == y)
