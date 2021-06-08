@@ -42,6 +42,9 @@ bits x
 
     quote s = '"' : s ++ ['"']
 
+instance ToType (Proxy Bool) where
+    toType _ _ = [vtype|std_logic|]
+
 instance (KnownNat m, KnownNat f) => ToType (Proxy (UQ m f)) where
     toType _ _ = [vtype|ufixed($int:(m-1) downto $int:(-f))|]
       where
