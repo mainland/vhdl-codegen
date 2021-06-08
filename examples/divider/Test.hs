@@ -25,8 +25,17 @@ prop_divide_uq alg x d =
     toRational x < 2^m * toRational d ==>
     counterexample (show (q, r)) $
     toRational q*toRational d + toRational r * 2^^(-n) === toRational x
+    .&&.
+    q === UQ q'
+    .&&.
+    r === UQ (r' * 2^m)
   where
+    q :: UQ m f
+    r :: UQ m' f
     (q, r) = alg (x, d)
+
+    q', r' :: Integer
+    (q', r') = quotRem (unUQ x * 2^f) (unUQ d)
 
     m, f :: Integer
     m = natVal (Proxy :: Proxy m)
@@ -39,11 +48,20 @@ prop_divide_q :: forall m f m' . (KnownNat m, KnownNat f, KnownNat (m+f), m' ~ (
               -> Q m f
               -> Property
 prop_divide_q alg x d =
-    abs (toRational x) <= 2^m * abs (toRational d) ==>
+    d /= 0 && (abs (toRational x) < 2^m * abs (toRational d)) ==>
     counterexample (show (q, r)) $
-    toRational q*toRational d + toRational r * 2^^(-n) === toRational x
+    (toRational q*toRational d + toRational r * 2^^(-n) === toRational x)
+    .&&.
+    q === Q q'
+    .&&.
+    r === Q (r' * 2^m)
   where
+    q :: Q m f
+    r :: Q m' f
     (q, r) = alg (x, d)
+
+    q', r' :: Integer
+    (q', r') = quotRem (unQ x * 2^f) (unQ d)
 
     m, f :: Integer
     m = fromIntegral $ natVal (Proxy :: Proxy m)
