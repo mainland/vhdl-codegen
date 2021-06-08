@@ -98,7 +98,7 @@ instance (KnownNat m, KnownNat f) => TextIO (VExp (Q m f)) where
 
   fromTextIOM _ = do
       e <- consume
-      return [[vexp|to_sfixed($e, $(m-1), $(-f))|]]
+      return [[vexp|to_sfixed($e, $(m), $(-f))|]]
     where
       m, f :: Integer
       m = natVal (Proxy :: Proxy m)
