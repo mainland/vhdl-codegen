@@ -105,3 +105,17 @@ instance (Pack a, Pack b, Pack c) => Pack (a, b, c) where
     packM = (,,) <$> packM <*> packM <*> packM
 
     unpack (x, y, z) = unpack x <> unpack y <> unpack z
+
+instance (Pack s, Pack t, Pack u, Pack v) => Pack (s, t, u, v) where
+    genPackM = (,,,) <$> genPackM <*> genPackM <*> genPackM <*> genPackM
+
+    packM = (,,,) <$> packM <*> packM <*> packM <*> packM
+
+    unpack (s, t, u, v) = unpack s <> unpack t <> unpack u <> unpack v
+
+instance (Pack s, Pack t, Pack u, Pack v, Pack w) => Pack (s, t, u, v, w) where
+    genPackM = (,,,,) <$> genPackM <*> genPackM <*> genPackM <*> genPackM <*> genPackM
+
+    packM = (,,,,) <$> packM <*> packM <*> packM <*> packM <*> packM
+
+    unpack (s, t, u, v, w) = unpack s <> unpack t <> unpack u <> unpack v <> unpack w
