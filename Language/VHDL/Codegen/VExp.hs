@@ -134,38 +134,42 @@ instance LiftEq VExp where
     VInt x   .==. VInt y  = VBool (x == y)
     VQ x     .==. VQ y    = VBool (x == y)
     VUQ x    .==. VUQ y   = VBool (x == y)
-    x        .==. y       = VExp [vexp|$x = $y|]
+
+    x .==. y | x == y    = VBool True
+             | otherwise = VExp [vexp|$x ?= $y|]
 
     VBool x  ./=. VBool y = VBool (x /= y)
     VInt x   ./=. VInt y  = VBool (x /= y)
     VQ x     ./=. VQ y    = VBool (x /= y)
     VUQ x    ./=. VUQ y   = VBool (x /= y)
-    x        ./=. y       = VExp [vexp|$x /= $y|]
+
+    x ./=. y | x == y    = VBool False
+             | otherwise = VExp [vexp|$x ?/= $y|]
 
 instance LiftOrd VExp where
     VBool x .<. VBool y = VBool (x < y)
     VInt x  .<. VInt y  = VBool (x < y)
     VQ x    .<. VQ y    = VBool (x < y)
     VUQ x   .<. VUQ y   = VBool (x < y)
-    x       .<. y       = VExp [vexp|$x < $y|]
+    x       .<. y       = VExp [vexp|$x ?< $y|]
 
     VBool x .<=. VBool y = VBool (x <= y)
     VInt x  .<=. VInt y  = VBool (x <= y)
     VQ x    .<=. VQ y    = VBool (x <= y)
     VUQ x   .<=. VUQ y   = VBool (x <= y)
-    x       .<=. y       = VExp [vexp|$x <= $y|]
+    x       .<=. y       = VExp [vexp|$x ?<= $y|]
 
     VBool x .>=. VBool y = VBool (x >= y)
     VInt x  .>=. VInt y  = VBool (x >= y)
     VQ x    .>=. VQ y    = VBool (x >= y)
     VUQ x   .>=. VUQ y   = VBool (x >= y)
-    x       .>=. y       = VExp [vexp|$x >= $y|]
+    x       .>=. y       = VExp [vexp|$x ?>= $y|]
 
     VBool x .>. VBool y = VBool (x > y)
     VInt x  .>. VInt y  = VBool (x > y)
     VQ x    .>. VQ y    = VBool (x > y)
     VUQ x   .>. VUQ y   = VBool (x > y)
-    x       .>. y       = VExp [vexp|$x > $y|]
+    x       .>. y       = VExp [vexp|$x ?> $y|]
 
 instance Num a => Num (VExp a) where
     VQ 0 + y    = y
