@@ -82,7 +82,7 @@ instance (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m') => Nonrestoring (Q 
 
           post :: (Q m f, Q m' f, Int, Bool, Q m' f) -> (Q m f, Q m' f)
           post (q, r, x_sign, r_zero, d) =
-              if signBit r /= x_sign || r_zero
+              if r /= 0 && ((signBit r /= x_sign) || r_zero)
                 then if signBit r /= signBit d
                        then (q' - ulp, r + d `shiftL` m)
                        else (q' + ulp, r - d `shiftL` m)
