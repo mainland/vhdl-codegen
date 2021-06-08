@@ -14,15 +14,6 @@ import Data.Proxy (Proxy(..))
 import Data.Fixed.Q
 import GHC.TypeLits
 
-class Cast a b where
-    cast :: a -> b
-
-instance (KnownNat f, KnownNat f') => Cast (UQ m f) (UQ m' f') where
-    cast (UQ x) = UQ (x `shift` fromIntegral (natVal (Proxy :: Proxy f') - natVal (Proxy :: Proxy f)))
-
-instance (KnownNat f, KnownNat f') => Cast (Q m f) (Q m' f') where
-    cast (Q x) = Q (x `shift` fromIntegral (natVal (Proxy :: Proxy f') - natVal (Proxy :: Proxy f)))
-
 underflow :: FiniteBits a => a -> Bool
 underflow bits = testBit bits (finiteBitSize bits - 1)
 
@@ -41,7 +32,7 @@ instance (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m') => Restoring (UQ m 
           m = intBitSize x0
 
           pre :: (UQ m f, UQ m f) -> (UQ m f, UQ m' f, UQ m' f)
-          pre (x0, d0) = (0, cast x0, cast d0)
+          pre (x0, d0) = (0, fixedCast x0, fixedCast d0)
 
           post :: (UQ m f, UQ m' f, UQ m' f) -> (UQ m f, UQ m' f)
           post (q, r, _) = (q, r)
@@ -62,7 +53,7 @@ instance (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m') => Nonrestoring (UQ
           m = intBitSize x0
 
           pre :: (UQ m f, UQ m f) -> (UQ m f, UQ m' f, UQ m' f)
-          pre (x0, d0) = (0, cast x0, cast d0)
+          pre (x0, d0) = (0, fixedCast x0, fixedCast d0)
 
           post :: (UQ m f, UQ m' f, UQ m' f) -> (UQ m f, UQ m' f)
           post (q, r, d) =
@@ -87,7 +78,7 @@ instance (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m') => Nonrestoring (Q 
           m = intBitSize x0
 
           pre :: (Q m f, Q m f) -> (Q m f, Q m' f, Int, Bool, Q m' f)
-          pre (x0, d0) = (0, cast x0, signBit x0, False, cast d0)
+          pre (x0, d0) = (0, fixedCast x0, signBit x0, False, fixedCast d0)
 
           post :: (Q m f, Q m' f, Int, Bool, Q m' f) -> (Q m f, Q m' f)
           post (q, r, x_sign, r_zero, d) =
