@@ -102,8 +102,6 @@ instance (KnownNat m, KnownNat f, m' ~ (1+m+m), KnownNat m') => Nonrestoring (Q 
               -- See Koren Section 3.3.1
               fromBSD :: Q m f -> Q m f
               fromBSD x = ((x `shiftL` 1) `complementBit` (n-1)) `setBit` 0
-                where
-                  n = finiteBitSize x
 
           step :: (Q m f, Q m' f, Int, Bool, Q m' f) -> Int -> (Q m f, Q m' f, Int, Bool, Q m' f)
           step (q, r, x_sign, r_zero, d) i =
