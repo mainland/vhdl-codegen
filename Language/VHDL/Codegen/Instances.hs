@@ -66,7 +66,7 @@ instance (KnownNat m, KnownNat f) => ToLit (UQ m f) where
 instance (KnownNat m, KnownNat f) => ToExp (Q m f) where
     toExp n _ = resize [vexp|std_logic_vector'($lit:n)|]
       where
-        resize e = [vexp|to_sfixed($e, $int:(m-1), $int:(-f))|]
+        resize e = [vexp|to_sfixed($e, $int:(m), $int:(-f))|]
           where
             m, f :: Integer
             m = natVal (Proxy :: Proxy m)
