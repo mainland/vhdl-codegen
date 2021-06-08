@@ -146,6 +146,15 @@ instance LiftEq VExp where
     x ./=. y | x == y    = VBool False
              | otherwise = VExp [vexp|$x ?/= $y|]
 
+instance LiftBool VExp where
+    VBool True .&&. x          = x
+    x          .&&. VBool True = x
+    x          .&&. y          = VExp [vexp|$x and $y|]
+
+    VBool True .||. _          = VBool True
+    _          .||. VBool True = VBool True
+    x          .||. y          = VExp [vexp|$x or $y|]
+
 instance LiftOrd VExp where
     VBool x .<. VBool y = VBool (x < y)
     VInt x  .<. VInt y  = VBool (x < y)
