@@ -543,7 +543,7 @@ addTypeContext [vtype|ufixed ($_ downto $_)|] = do
 
 addTypeContext [vtype|sfixed ($_ downto $_)|] = do
   library "ieee"
-  use "ieee.fixed_float_types.all;"
+  use "ieee.fixed_float_types.all"
   use "ieee.fixed_pkg.all"
 
 addTypeContext _ = return ()
