@@ -45,24 +45,25 @@ read_ = mapId ("read_" ++)
 write_ = mapId ("write_" ++)
 
 data TestBenchConfig = TestBenchConfig
-  { tb_watchdog :: Maybe Int -- ^ Watchdog timeout (in clock periods)
+  { tb_entity   :: V.Id      -- ^ VHDL test bench entity name
+  , tb_watchdog :: Maybe Int -- ^ Watchdog timeout (in clock periods)
   , tb_compare  :: Bool      -- ^ True if test bench should compare to output,
                              -- False to write output
   }
 
 defaultTestBenchConfig :: TestBenchConfig
 defaultTestBenchConfig = TestBenchConfig
-  { tb_watchdog = Nothing
+  { tb_entity   = "testbench"
+  , tb_watchdog = Nothing
   , tb_compare  = True
   }
 
 -- | Create a VUnit testbench module for a pipeline.
 vunitTestBench :: forall a b m . (TextIO a, TextIO b, MonadCg m)
                => TestBenchConfig
-               -> V.Id
                -> Pipeline a b
                -> m [V.DesignUnit]
-vunitTestBench conf entity p = do
+vunitTestBench conf p = do
   stiumuli_proc <- genStimuliProc
   compare_proc  <- genCompareProc
   write_proc    <- genWriteProc
@@ -80,16 +81,16 @@ context vunit_lib.vunit_context;
 library osvvm;
 use osvvm.RandomPkg.all;
 
-entity $id:entity is
+entity $id:(tb_entity conf) is
   generic (
     runner_cfg : string;
     tb_path    : string;
     csv_i      : string := "data/in.csv";
     csv_o      : string := "data/out.csv"
   );
-end entity $id:entity;
+end entity $id:(tb_entity conf);
 
-architecture test of $id:entity is
+architecture test of $id:(tb_entity conf) is
   constant clk_period : time := 10 ns;
 
   signal clk : std_logic := '1';

@@ -65,7 +65,11 @@ main = do
         Just path -> liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))
       case tb_output conf of
         Nothing   -> return ()
-        Just path -> do unit <- evalCg $ vunitTestBench defaultTestBenchConfig { tb_watchdog = Nothing } "tb_divider" p
+        Just path -> do unit <- evalCg $ vunitTestBench
+                                         defaultTestBenchConfig { tb_watchdog = Nothing
+                                                                , tb_entity   = "tb_divider"
+                                                                }
+                                         p
                         withFile path WriteMode $ \h -> hPutDoc h (ppr unit)
       when (isJust (tv_in_output conf) || isJust (tv_out_output conf)) $
         genTestVectors (Proxy :: Proxy N) conf
