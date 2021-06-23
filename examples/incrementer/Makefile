@@ -8,9 +8,10 @@ clean :
 	rm -f rtl/incrementer.vhd tb_incrementer.vhd
 	rm -rf vunit_out
 
-rtl/incrementer.vhd tb_incrementer.vhd : Main.hs
-	$(RUNGHC) $< -- -p -o rtl/incrementer.vhd -t tb_incrementer.vhd || rm -f rtl/incrementer.vhd tb_incrementer.vhd
-
 .PHONY : test
 test : rtl/incrementer.vhd tb_incrementer.vhd
 	./run.py
+
+rtl/incrementer.vhd tb_incrementer.vhd : Main.hs
+	$(RUNGHC) $< -- -s -o rtl/incrementer.vhd -t tb_incrementer.vhd || rm -f rtl/incrementer.vhd tb_incrementer.vhd
+
