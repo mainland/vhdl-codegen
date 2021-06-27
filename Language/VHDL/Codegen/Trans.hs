@@ -265,6 +265,16 @@ sigassign v e0 = append [vstm|$id:v <= $cond:cond;|]
     mkWaves :: Exp -> Waveform
     mkWaves e = [Wave (Just e) Nothing (srclocOf e)]
 
+-- | Assign (concurrently) an expression to a signal
+sigcassign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
+sigcassign v e0 = append [vcstm|$id:v <= $cond:cond;|]
+  where
+    cond :: Conditional Waveform
+    cond = fmap mkWaves (toConditionalE (toExp e0 noLoc))
+
+    mkWaves :: Exp -> Waveform
+    mkWaves e = [Wave (Just e) Nothing (srclocOf e)]
+
 -- | Convert a (possibly conditional) expression to a @'Conditional' 'Exp'@.
 toConditionalE :: Exp -> Conditional Exp
 toConditionalE [vexp|ifte($c0, $th0, $el0)|] =
