@@ -27,6 +27,7 @@ import Control.Category (Category(..))
 import Control.Monad (forM_,
                       zipWithM_)
 import Control.Monad.State (gets)
+import Data.Bits ( Bits(shift) )
 import Data.Char (toLower)
 import Data.Loc (noLoc)
 import Data.Sequence (Seq)
@@ -270,6 +271,28 @@ wrapP entity p@Pipeline{} = do
 
 wrapP entity p = flattenP p >>= wrapP entity
 
+-- | Calculate integral log base 2. Fails if argument is not equal to 2^i for
+-- some integer i.
+ilog2 :: forall a m . (Num a, Ord a, Bits a, Monad m)
+      => a
+      -> m Int
+ilog2 x = go 0
+  where
+    go :: Int -> m Int
+    go i | x < pow2  = fail "No integer log"
+         | x == pow2 = return i
+         | otherwise = go (i+1)
+      where
+        pow2 = 1 `shift` i
+
+--- | Return VHDL expression that is true when upper bound has been reached.
+atUpperBound :: VExp Int  -- ^ Loop index
+             -> Int       -- ^ Loop upper bound
+             -> VExp Bool
+atUpperBound i u = case ilog2 u of
+                     Nothing -> VExp [vexp|$i = $u|]
+                     Just y  -> VExp [vexp|array to_unsigned($i, $(y+1))($y) = '1'|]
+
 -- | Perform serial iteration with a function.
 siter :: forall a b c m . (Pack a, Pack b, Pack c, MonadCg m)
       => Id                     -- ^ Name of VHDL entity
@@ -285,6 +308,8 @@ siter entity f g h names snames n = do
     (x :: b, state_vars) <- genPack snames
     (_ :: c, out_vars)   <- genPack names
 
+    addTypeContext [vtype|natural|]
+    addTypeContext [vtype|unsigned|]
     addTypeContext [vtype|std_logic|]
     mapM_ addTypeContext [tau | (_, tau) <- in_vars]
     mapM_ addTypeContext [tau | (_, tau) <- state_vars]
@@ -306,45 +331,56 @@ siter entity f g h names snames n = do
               $idecls:out_idecls);
       end;|]
 
-    withArchitecture "behavioral" (toName entity noLoc) $
+    withArchitecture "behavioral" (toName entity noLoc) $ do
+        -- Declare loop counter and state
+        sig "i" [vtype|natural range 0 to $n|] (Just [vexp|0|])
+        mapM_ (\(v, tau) -> sig v tau Nothing) state_vars
+
+        let i :: VExp Int
+            i = VExp [vexp|i|]
+
+        -- Update loop index
         withProcess ["clk"] $ do
-            var "i" [vtype|integer range 0 to $n|] (Just [vexp|0|])
-            mapM_ (\(v, tau) -> var v tau Nothing) state_vars
             onRisingEdge $ do
-                if [vexp|rst = '1'|]
-                  then reset
-                  else do
-                    when [vexp|i = 0 and in_valid = '1'|] $ do
-                        x_pre <- pack [(in_ v, tau)| (v, tau) <- in_vars]
-                        zipWithM_ assign (map fst state_vars) (unpack (f x_pre))
+                if [vexp|rst = '1'|] then
+                  append [vstm|i <= 0;|]
+                else if [vexp|(i > 0 and i < $n) or (i = 0 and in_valid = '1')|] then
+                  append [vstm|i <= i + 1;|]
+                else when [vexp|out_ready = '1'|] $
+                  append [vstm|i <= 0;|]
 
-                    -- We can take a step when in_valid is high and we are at
-                    -- the initial step or when we have remaining subsequent
-                    -- steps to take.
-                    if [vexp|(in_valid = '1' and i = 0) or (i > 0 and i < $n)|]
-                      then do
-                        result <- unpack <$> g x (VExp [vexp|i|])
-                        zipWithM_ assign (map fst state_vars) result
-                        append [vstm|i := i + 1;|]
-                      else when [vexp|(i = $n) and (out_ready = '1')|] $
-                        append [vstm|i := 0;|]
+        -- Update state
+        withProcess ["clk"] $ do
+            onRisingEdge $ do
+                if [vexp|i = 0 and in_valid = '1'|] then do
+                  x_pre  <- pack [(in_ v, tau)| (v, tau) <- in_vars]
+                  result <- unpack <$> g (f x_pre) 0
+                  zipWithM_ sigassign (map fst state_vars) result
 
-                append [vstm|in_ready <= '1' when (i = 0) else
-                                         '0';|]
+                -- We can take a step when in_valid is high and we are at
+                -- the initial step or when we have remaining subsequent
+                -- steps to take.
+                else when [vexp|i > 0 and i < $n|] $ do
+                  result <- unpack <$> g x (VExp [vexp|i|])
+                  zipWithM_ sigassign (map fst state_vars) result
 
-                z <- pack state_vars
-                zipWithM_ sigassign [out_ v | (v, _) <- out_vars] (unpack (h z))
+        -- Update in_ready signal
+        append [vcstm|in_ready <= '1' when (i = 0) else
+                                  '0';|]
 
-                append [vstm|out_valid <= '1' when (i = $n) else
-                                          '0';|]
+        -- Update out_valid signal
+        append [vcstm|out_valid <= '1' when $(atUpperBound i n) else
+                                   '0';|]
+
+        -- Update state
+        z <- pack state_vars
+        zipWithM_ sigcassign [out_ v | (v, _) <- out_vars] (unpack (h z))
+
     return Pipeline { pipe_context = ctx
                     , pipe_entity  = entity
                     , pipe_in      = [(in_ v, tau)  | (v, tau) <- in_vars]
                     , pipe_out     = [(out_ v, tau) | (v, tau) <- out_vars]
                     }
-  where
-    reset :: m ()
-    reset = append [vstm|i := 0;|]
 
 -- | Perform parallel iteration with a function. This version will squeeze out
 -- pipeline bubbles.
