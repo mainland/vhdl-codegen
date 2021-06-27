@@ -346,13 +346,13 @@ siter entity f g h names snames n = do
                   append [vstm|i <= 0;|]
                 else if [vexp|(i > 0 and i < $n) or (i = 0 and in_valid = '1')|] then
                   append [vstm|i <= i + 1;|]
-                else when [vexp|out_ready = '1'|] $
+                else when [vexp|i = $n and out_ready = '1'|] $
                   append [vstm|i <= 0;|]
 
         -- Update state
         withProcess ["clk"] $ do
             onRisingEdge $ do
-                if [vexp|i = 0 and in_valid = '1'|] then do
+                when [vexp|i = 0 and in_valid = '1'|] $ do
                   x_pre  <- pack [(in_ v, tau)| (v, tau) <- in_vars]
                   result <- unpack <$> g (f x_pre) 0
                   zipWithM_ sigassign (map fst state_vars) result
@@ -360,7 +360,7 @@ siter entity f g h names snames n = do
                 -- We can take a step when in_valid is high and we are at
                 -- the initial step or when we have remaining subsequent
                 -- steps to take.
-                else when [vexp|i > 0 and i < $n|] $ do
+                when [vexp|i > 0 and i < $n|] $ do
                   result <- unpack <$> g x (VExp [vexp|i|])
                   zipWithM_ sigassign (map fst state_vars) result
 
