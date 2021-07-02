@@ -236,6 +236,20 @@ instance {-# OVERLAPS #-} (KnownNat m, KnownNat f, KnownNat (m + f)) => Num (VEx
 bits :: String -> V.Exp
 bits s = V.LitE (V.BitStringLit ('"' : s ++ "\"") noLoc) noLoc
 
+-- | Generate a std_logic_vector constant of length n with bit i set
+slvBit :: Integer
+       -> VExp Int
+       -> V.Exp
+slvBit n (VInt i) = [vexp|std_logic_vector'($bs)|]
+  where
+    bs :: String
+    bs = replicate (fromIntegral (n-i-1)) '0' ++ "1" ++ replicate (fromIntegral i) '0'
+
+slvBit n i = [vexp|std_logic_vector'($bs sll $i)|]
+  where
+    bs :: String
+    bs = replicate (fromIntegral (n-1)) '0' ++ "1"
+
 instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
     finiteBitSize' _ = finiteBitSize (undefined :: UQ m f)
 
@@ -243,23 +257,21 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
 
     e1 ..|.. e2 = VExp [vexp|$e1 or $e2|]
 
-    bit' i = VExp [vexp|to_ufixed($one sll $i, $int:(m-1), $int:(-f))|]
+    bit' i = VExp [vexp|to_ufixed($(slvBit n i), $int:(m-1), $int:(-f))|]
       where
-        m, f :: Integer
+        m, f, n :: Integer
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
-
-        one = replicate (fromIntegral (m+f-1)) '0' ++ "1"
+        n = m+f
 
     testBit' x i = VExp [vexp|array to_slv($x)($i)|]
 
-    setBit' x i = VExp [vexp|to_ufixed(to_slv($x) or ($one sll $i), $int:(m-1), $int:(-f))|]
+    setBit' x i = VExp [vexp|to_ufixed(to_slv($x) or $(slvBit n i), $int:(m-1), $int:(-f))|]
       where
-        m, f :: Integer
+        m, f, n:: Integer
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
-
-        one = replicate (fromIntegral (m+f-1)) '0' ++ "1"
+        n = m+f
 
     complement' x = VExp [vexp|not $x|]
 
