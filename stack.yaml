@@ -8,4 +8,4 @@ extra-deps:
 - git: https://github.com/mainland/fixed-q.git
   commit: 963b545ce4493cab2c4fc51ab8bfb88804c7a73f
 - git: https://github.com/mainland/language-vhdl-quote.git
-  commit: 984f74fa08d9d3dd887cd989cf28ade0948f8c7c
+  commit: 0bb75893d89e873d7f9ee0901a91f89613e82152

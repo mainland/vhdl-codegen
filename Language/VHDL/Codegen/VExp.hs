@@ -264,7 +264,7 @@ instance (KnownNat m, KnownNat f) => LiftBits VExp (UQ m f) where
         f = natVal (Proxy :: Proxy f)
         n = m+f
 
-    testBit' x i = VExp [vexp|array to_slv($x)($i)|]
+    testBit' x i = VExp [vexp|arrname to_slv($x)($i)|]
 
     setBit' x i = VExp [vexp|to_ufixed(to_slv($x) or $(slvBit n i), $int:(m-1), $int:(-f))|]
       where

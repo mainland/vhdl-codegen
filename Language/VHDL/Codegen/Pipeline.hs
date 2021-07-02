@@ -291,7 +291,7 @@ atUpperBound :: VExp Int  -- ^ Loop index
              -> VExp Bool
 atUpperBound i u = case ilog2 u of
                      Nothing -> VExp [vexp|$i = $u|]
-                     Just y  -> VExp [vexp|array to_unsigned($i, $(y+1))($y) = '1'|]
+                     Just y  -> VExp [vexp|funname to_unsigned($i, $(y+1))($y) = '1'|]
 
 -- | Perform serial iteration with a function.
 siter :: forall a b c m . (Pack a, Pack b, Pack c, MonadCg m)
@@ -432,18 +432,18 @@ piter entity f g h names snames n = do
                 if [vexp|rst = '1'|]
                   then reset
                   else do
-                    when [vexp|array ready(0)|] $ do
+                    when [vexp|arrname ready(0)|] $ do
                       x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
                       result <- unpack <$> g (f x) (VInt 0)
                       zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
                       append [vstm|valid(0) <= in_valid;|]
 
                     forS "i" [vrange|1 to $(n-1)|] $ \i -> do
-                        when [vexp|array ready($i)|] $ do
-                          x <- pack (map (\(v, tau) -> ([vexp|array $id:v($i-1)|], tau)) state_vars)
+                        when [vexp|arrname ready($i)|] $ do
+                          x <- pack (map (\(v, tau) -> ([vexp|arrname $id:v($i-1)|], tau)) state_vars)
                           result <- unpack <$> g x (VExp i)
                           zipWithM_ (\(v, _) e -> append [vstm|$id:v($i) <= $e;|]) state_vars result
-                          append [vstm|valid($i) <= array valid($i-1);|]
+                          append [vstm|valid($i) <= arrname valid($i-1);|]
 
         append [vcstm|ready($(n-1)) <= out_ready or not valid($(n-1));|]
 
@@ -456,7 +456,7 @@ piter entity f g h names snames n = do
 
         append [vcstm|in_ready <= ready(0);|]
 
-        z <- pack [([vexp|array $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
+        z <- pack [([vexp|arrname $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
         zipWithM_ (\(v, _) e -> append [vcstm|$id:(out_ v) <= $e;|]) out_vars (unpack (h z))
 
         append [vcstm|out_valid <= valid(valid'high);|]
@@ -525,7 +525,7 @@ piter' entity f g h names snames n = do
                        zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
 
                     forS "i" [vrange|1 to $(n-1)|] $ \i -> do
-                      x <- pack (map (\(v, tau) -> ([vexp|array $id:v($i-1)|], tau)) state_vars)
+                      x <- pack (map (\(v, tau) -> ([vexp|arrname $id:v($i-1)|], tau)) state_vars)
                       result <- unpack <$> g x (VExp i)
                       zipWithM_ (\(v, _) e -> append [vstm|$id:v($i) <= $e;|]) state_vars result
 
@@ -533,7 +533,7 @@ piter' entity f g h names snames n = do
 
         append [vcstm|in_ready <= out_ready;|]
 
-        z <- pack [([vexp|array $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
+        z <- pack [([vexp|arrname $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
         zipWithM_ (\(v, _) e -> append [vcstm|$id:(out_ v) <= $e;|]) out_vars (unpack (h z))
 
         append [vcstm|out_valid <= valid(valid'high);|]
