@@ -33,12 +33,10 @@ instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Pretty (UQ m f) where
 instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Pretty (Q m f) where
     ppr = text . show
 
-bits :: Bits a => a -> String
-bits x
-  | n == 1    = if testBit x 0 then "'1'" else "'0'"
-  | otherwise = quote $ map (\i -> if testBit x i then '1' else '0') [n-1, n-2..0]
+bits :: FiniteBits a => a -> String
+bits x = quote [if testBit x i then '1' else '0' | i <- [n-1, n-2..0]]
   where
-    Just n = bitSizeMaybe x
+    n = finiteBitSize x
 
     quote s = '"' : s ++ ['"']
 
@@ -64,19 +62,15 @@ instance (KnownNat m, KnownNat f) => ToLit (UQ m f) where
     toLit x loc = V.BitStringLit (bits x) loc
 
 instance (KnownNat m, KnownNat f) => ToExp (Q m f) where
-    toExp n _ = resize [vexp|std_logic_vector'($lit:n)|]
+    toExp n _ = [vexp|to_sfixed(std_logic_vector'($lit:n), $int:(m), $int:(-f))|]
       where
-        resize e = [vexp|to_sfixed($e, $int:(m), $int:(-f))|]
-          where
-            m, f :: Integer
-            m = natVal (Proxy :: Proxy m)
-            f = natVal (Proxy :: Proxy f)
+        m, f :: Integer
+        m = natVal (Proxy :: Proxy m)
+        f = natVal (Proxy :: Proxy f)
 
 instance (KnownNat m, KnownNat f) => ToExp (UQ m f) where
-    toExp n _ = resize [vexp|std_logic_vector'($lit:n)|]
+    toExp n _ = [vexp|to_ufixed(std_logic_vector'($lit:n), $int:(m-1), $int:(-f))|]
       where
-        resize e = [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
-          where
-            m, f :: Integer
-            m = natVal (Proxy :: Proxy m)
-            f = natVal (Proxy :: Proxy f)
+        m, f :: Integer
+        m = natVal (Proxy :: Proxy m)
+        f = natVal (Proxy :: Proxy f)
