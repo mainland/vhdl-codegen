@@ -434,7 +434,7 @@ piter entity f g h names snames n = do
                   else do
                     when [vexp|arrname ready(0)|] $ do
                       x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
-                      result <- unpack <$> g (f x) (VInt 0)
+                      result <- unpack <$> g (f x) 0
                       zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
                       append [vstm|valid(0) <= in_valid;|]
 
@@ -521,7 +521,7 @@ piter' entity f g h names snames n = do
                   then reset
                   else when [vexp|out_ready|] $ do
                     do x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
-                       result <- unpack <$> g (f x) (VInt 0)
+                       result <- unpack <$> g (f x) 0
                        zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
 
                     forS "i" [vrange|1 to $(n-1)|] $ \i -> do
