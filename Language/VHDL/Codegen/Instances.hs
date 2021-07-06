@@ -32,7 +32,7 @@ instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Pretty (Q m f) where
     ppr = text . show
 
 instance ToType (Proxy Bool) where
-    toType _ _ = [vtype|std_logic|]
+    toType _ _ = [vtype|boolean|]
 
 instance (KnownNat m, KnownNat f) => ToType (Proxy (UQ m f)) where
     toType _ _ = [vtype|ufixed($int:(m-1) downto $int:(-f))|]
