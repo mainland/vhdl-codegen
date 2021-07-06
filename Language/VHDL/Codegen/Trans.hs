@@ -249,15 +249,15 @@ forS i_name rng k = do
                  end loop;|]
 
 -- | Assign an expression to a variable
-assign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
-assign v e = append [vstm|$id:v := $cond:cond;|]
+assign :: (ToName v, ToExp e, MonadCg m) => v -> e -> m ()
+assign v e = append [vstm|$name:v := $cond:cond;|]
   where
     cond :: Conditional Exp
     cond = toConditionalE (toExp e noLoc)
 
 -- | Assign an expression to a signal
-sigassign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
-sigassign v e0 = append [vstm|$id:v <= $cond:cond;|]
+sigassign :: (ToName v, ToExp e, MonadCg m) => v -> e -> m ()
+sigassign v e0 = append [vstm|$name:v <= $cond:cond;|]
   where
     cond :: Conditional Waveform
     cond = fmap mkWaves (toConditionalE (toExp e0 noLoc))
@@ -266,8 +266,8 @@ sigassign v e0 = append [vstm|$id:v <= $cond:cond;|]
     mkWaves e = [Wave (Just e) Nothing (srclocOf e)]
 
 -- | Assign (concurrently) an expression to a signal
-sigcassign :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
-sigcassign v e0 = append [vcstm|$id:v <= $cond:cond;|]
+sigcassign :: (ToName v, ToExp e, MonadCg m) => v -> e -> m ()
+sigcassign v e0 = append [vcstm|$name:v <= $cond:cond;|]
   where
     cond :: Conditional Waveform
     cond = fmap mkWaves (toConditionalE (toExp e0 noLoc))
@@ -294,22 +294,22 @@ toConditionalE e = FinC e (srclocOf e)
 -- instead of conditionals.
 
 -- | Assign an expression to a variable
-assign' :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
+assign' :: (ToName v, ToExp e, MonadCg m) => v -> e -> m ()
 assign' v e0 = go (toExp e0 noLoc)
   where
     go [vexp|ifte($c, $th, $el)|] = if c
                                     then assign v th
                                     else assign v el
-    go e                          = append [vstm|$id:v := $e;|]
+    go e                          = append [vstm|$name:v := $e;|]
 
 -- | Assign an expression to a signal
-sigassign' :: (ToId v, ToExp e, MonadCg m) => v -> e -> m ()
+sigassign' :: (ToName v, ToExp e, MonadCg m) => v -> e -> m ()
 sigassign' v e0 = go (toExp e0 noLoc)
   where
     go [vexp|ifte($c, $th, $el)|] = if c
                                     then sigassign v th
                                     else sigassign v el
-    go e                          = append [vstm|$id:v <= $e;|]
+    go e                          = append [vstm|$name:v <= $e;|]
 
 -- | Add a variable declaration
 var :: MonadCg m
