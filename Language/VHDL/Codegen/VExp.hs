@@ -244,6 +244,10 @@ class FiniteBits a => DeepBits a where
     or_ :: VExp a -> VExp a -> VExp a
     x `or_` y = VExp [vexp|$x or $y|]
 
+    -- | Logical xor of deep values
+    xor_ :: VExp a -> VExp a -> VExp a
+    x `xor_` y = VExp [vexp|$x xor $y|]
+
     -- | Deep value with bit @i@ set.
     bit_ :: VExp Int -> VExp a
     bit_ i = fromSLV (slvBit n i)
@@ -291,6 +295,9 @@ instance (DeepBits a, ToExp a) => LiftBits VExp a where
 
     VConst x ..|.. VConst y = VConst (x .|. y)
     e1       ..|.. e2       = e1 `or_` e2
+
+    VConst x `xor'` VConst y = VConst (x `xor` y)
+    e1       `xor'` e2       = e1 `xor_` e2
 
     bit' (VConst i) = VConst (bit i)
     bit' i          = bit_ i

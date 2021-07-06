@@ -67,6 +67,9 @@ class LiftBits f a where
     -- | Bitwise \"or\"
     (..|..) :: Bits a => f a -> f a -> f a
 
+    -- | Bitwise \"xor\"
+    xor' :: Bits a => f a -> f a -> f a
+
     -- | Value with bit
     bit' :: f Int -> f a
 
