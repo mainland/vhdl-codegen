@@ -18,12 +18,10 @@
 
 module Language.VHDL.Codegen.Instances () where
 
-import Data.Bits
 import Data.Fixed.Q ( Q, UQ )
 import Data.Proxy ( Proxy(..) )
 import GHC.TypeLits ( KnownNat, type (+), natVal )
 import Language.VHDL.Quote
-import qualified Language.VHDL.Syntax as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
@@ -32,13 +30,6 @@ instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Pretty (UQ m f) where
 
 instance (KnownNat m, KnownNat f, KnownNat (m + f)) => Pretty (Q m f) where
     ppr = text . show
-
-bits :: FiniteBits a => a -> String
-bits x = quote [if testBit x i then '1' else '0' | i <- [n-1, n-2..0]]
-  where
-    n = finiteBitSize x
-
-    quote s = '"' : s ++ ['"']
 
 instance ToType (Proxy Bool) where
     toType _ _ = [vtype|std_logic|]
@@ -56,10 +47,10 @@ instance (KnownNat m, KnownNat f) => ToType (Proxy (Q m f)) where
         f = natVal (Proxy :: Proxy f)
 
 instance (KnownNat m, KnownNat f) => ToLit (Q m f) where
-    toLit x loc = V.BitStringLit (bits x) loc
+    toLit x loc = bitsL x loc
 
 instance (KnownNat m, KnownNat f) => ToLit (UQ m f) where
-    toLit x loc = V.BitStringLit (bits x) loc
+    toLit x loc = bitsL x loc
 
 instance (KnownNat m, KnownNat f) => ToExp (Q m f) where
     toExp n _ = [vexp|to_sfixed(std_logic_vector'($lit:n), $int:(m), $int:(-f))|]

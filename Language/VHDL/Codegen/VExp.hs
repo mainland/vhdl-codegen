@@ -19,7 +19,7 @@ module Language.VHDL.Codegen.VExp where
 
 import Data.Bits
 import Data.Fixed.Q ( Q, UQ )
-import Data.Loc ( (<-->), noLoc, Loc(NoLoc), Located(locOf) )
+import Data.Loc ( (<-->), Loc(NoLoc), Located(locOf) )
 import Data.Proxy ( Proxy(..) )
 import GHC.TypeLits ( KnownNat, natVal )
 import Language.VHDL.Quote
@@ -208,9 +208,6 @@ instance (Eq a, Num a, DeepNum a, ToExp a) => Num (VExp a) where
 
     signum (VConst x) = VConst (signum x)
     signum x          = signum_ x
-
-bits :: String -> V.Exp
-bits s = V.LitE (V.BitStringLit ('"' : s ++ "\"") noLoc) noLoc
 
 -- | Generate a std_logic_vector constant of length n with bit i set
 slvBit :: Int
