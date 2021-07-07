@@ -55,7 +55,7 @@ class LiftEq f => LiftBool f where
 
 infixl 5 ..|..
 infixl 7 ..&..
-infixl 8 `sla`, `sra`
+infixl 8 `shiftL'`, `shiftR'`
 
 class LiftBits f a where
     -- | Return the number of bits in the type of the argument.
@@ -83,7 +83,7 @@ class LiftBits f a where
     complement' :: Bits a => f a -> f a
 
     -- | Arithmetic shift left
-    sla :: Bits a => f a -> f Int -> f a
+    shiftL' :: Bits a => f a -> f Int -> f a
 
     -- | Arithmetic shift left
-    sra :: Bits a => f a -> f Int -> f a
+    shiftR' :: Bits a => f a -> f Int -> f a

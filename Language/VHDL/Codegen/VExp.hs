@@ -223,6 +223,16 @@ slvBit n i = [vexp|std_logic_vector'($bs sll $i)|]
     bs :: String
     bs = replicate (n-1) '0' ++ "1"
 
+infixl 8 `sla`, `sra`
+
+-- | Arithmetic shift left of VHDL expression
+sla :: (Bits a, LiftBits VExp a) => VExp a -> VExp Int -> VExp a
+sla = shiftL'
+
+-- | Arithmetic shift right of VHDL expression
+sra :: (Bits a, LiftBits VExp a) => VExp a -> VExp Int -> VExp a
+sra = shiftR'
+
 -- | Bits operations on deep values of a type. This class allows us to separate
 -- out operations on deep values from operations on mixed shallow/staged values.
 class FiniteBits a => DeepBits a where
@@ -268,12 +278,12 @@ class FiniteBits a => DeepBits a where
     complement_ x = VExp [vexp|not $x|]
 
     -- | Arithmetic shift left deep value @x@ by @i@ bits.
-    sla_ :: VExp a -> VExp Int -> VExp a
-    x `sla_` i = VExp [vexp|$x sla $i|]
+    shiftL_ :: VExp a -> VExp Int -> VExp a
+    x `shiftL_` i = VExp [vexp|$x sla $i|]
 
     -- | Arithmetic shift right deep value @x@ by @i@ bits.
-    sra_ :: VExp a -> VExp Int -> VExp a
-    x `sra_` i = VExp [vexp|$x sra $i|]
+    shiftR_ :: VExp a -> VExp Int -> VExp a
+    x `shiftR_` i = VExp [vexp|$x sra $i|]
 
 instance (KnownNat m, KnownNat f) => DeepBits (UQ m f) where
     fromSLV e = VExp [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
@@ -305,11 +315,11 @@ instance (DeepBits a, ToExp a) => LiftBits VExp a where
 
     complement' x = complement_ x
 
-    sla x 0 = x
-    sla x i = x `sla_` i
+    shiftL' x 0 = x
+    shiftL' x i = x `shiftL_` i
 
-    sra x 0 = x
-    sra x i = x `sra_` i
+    shiftR' x 0 = x
+    shiftR' x i = x `shiftR_` i
 
 -- | A fixed-point VHDL type.
 class Fixed a where
