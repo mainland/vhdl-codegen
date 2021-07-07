@@ -223,6 +223,14 @@ slvBit n i = [vexp|std_logic_vector'($bs sll $i)|]
     bs :: String
     bs = replicate (n-1) '0' ++ "1"
 
+-- | Generate a std_logic_vector constant of length n with all zero bits
+slvZero :: Int
+        -> V.Exp
+slvZero n = [vexp|std_logic_vector'($bs)|]
+  where
+    bs :: String
+    bs = replicate n '0'
+
 infixl 8 `sla`, `sra`
 
 -- | Arithmetic shift left of VHDL expression
@@ -238,10 +246,10 @@ sra = shiftR'
 class FiniteBits a => DeepBits a where
     -- | Convert a std_logic_vector (of the appropriate size) to a value of
     -- type `VExp a`.
-    fromSLV :: V.Exp -> VExp a
+    fromSLV_ :: ToExp e => e -> VExp a
 
     -- | Convert a value of type `VExp a` to a std_logic_vector.
-    toSLV :: VExp a -> V.Name
+    toSLV_ :: VExp a -> V.Name
 
     -- | Logical and of deep values
     and_ :: VExp a -> VExp a -> VExp a
@@ -255,27 +263,48 @@ class FiniteBits a => DeepBits a where
     xor_ :: VExp a -> VExp a -> VExp a
     x `xor_` y = VExp [vexp|$x xor $y|]
 
+    -- | Complement deep value.
+    complement_ :: VExp a -> VExp a
+    complement_ x = VExp [vexp|not $x|]
+
+    -- | Value with all bits zero.
+    zeroBits_ :: VExp a
+    zeroBits_ = fromSLV_ (slvZero n)
+      where
+        n :: Int
+        n = finiteBitSize (undefined :: a)
+
     -- | Deep value with bit @i@ set.
     bit_ :: VExp Int -> VExp a
-    bit_ i = fromSLV (slvBit n i)
+    bit_ i = fromSLV_ (slvBit n i)
+      where
+        n :: Int
+        n = finiteBitSize (undefined :: a)
+
+    -- | Set bit @i@ of deep value @x@.
+    setBit_ :: VExp a -> VExp Int -> VExp a
+    setBit_ x i = fromSLV_ [vexp|$(toSLV_ x) or $(slvBit n i)|]
+      where
+        n :: Int
+        n = finiteBitSize (undefined :: a)
+
+    -- | Clear bit @i@ of deep value @x@.
+    clearBit_ :: VExp a -> VExp Int -> VExp a
+    clearBit_ x i = fromSLV_ [vexp|$(toSLV_ x) and (not $(slvBit n i))|]
+      where
+        n :: Int
+        n = finiteBitSize (undefined :: a)
+
+    -- | Complement bit @i@ of deep value @x@.
+    complementBit_ :: VExp a -> VExp Int -> VExp a
+    complementBit_ x i = fromSLV_ [vexp|$(toSLV_ x) xor $(slvBit n i)|]
       where
         n :: Int
         n = finiteBitSize (undefined :: a)
 
     -- | Test bit @i@ of deep value @x@.
     testBit_ :: VExp a -> VExp Int -> VExp Bool
-    testBit_ x i = VExp [vexp|funname $name:(toSLV x)($i)|]
-
-    -- | Set bit @i@ of deep value @x@.
-    setBit_ :: VExp a -> VExp Int -> VExp a
-    setBit_ x i = fromSLV [vexp|$(toSLV x) or $(slvBit n i)|]
-      where
-        n :: Int
-        n = finiteBitSize (undefined :: a)
-
-    -- | Complement deep value.
-    complement_ :: VExp a -> VExp a
-    complement_ x = VExp [vexp|not $x|]
+    testBit_ x i = VExp [vexp|funname $name:(toSLV_ x)($i)|]
 
     -- | Arithmetic shift left deep value @x@ by @i@ bits.
     shiftL_ :: VExp a -> VExp Int -> VExp a
@@ -286,22 +315,22 @@ class FiniteBits a => DeepBits a where
     x `shiftR_` i = VExp [vexp|$x sra $i|]
 
 instance (KnownNat m, KnownNat f) => DeepBits (UQ m f) where
-    fromSLV e = VExp [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
+    fromSLV_ e = VExp [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
       where
         m, f :: Integer
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
 
-    toSLV e = [vname|funname to_slv($e)|]
+    toSLV_ e = [vname|funname to_slv($e)|]
 
 instance (KnownNat m, KnownNat f) => DeepBits (Q m f) where
-    fromSLV e = VExp [vexp|to_sfixed($e, $int:(m), $int:(-f))|]
+    fromSLV_ e = VExp [vexp|to_sfixed($e, $int:(m), $int:(-f))|]
       where
         m, f :: Integer
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
 
-    toSLV e = [vname|funname to_slv($e)|]
+    toSLV_ e = [vname|funname to_slv($e)|]
 
 instance (DeepBits a, ToExp a) => LiftBits VExp a where
     finiteBitSize' _ = finiteBitSize (undefined ::a)
@@ -315,20 +344,32 @@ instance (DeepBits a, ToExp a) => LiftBits VExp a where
     VConst x `xor'` VConst y = VConst (x `xor` y)
     e1       `xor'` e2       = e1 `xor_` e2
 
+    complement' x = complement_ x
+
+    zeroBits' = zeroBits_
+
     bit' (VConst i) = VConst (bit i)
     bit' i          = bit_ i
 
-    testBit' x i = testBit_ x i
+    setBit' (VConst x) (VConst i) = VConst (setBit x i)
+    setBit' x          i          = setBit_ x i
 
-    setBit' x i = setBit_ x i
+    clearBit' (VConst x) (VConst i) = VConst (clearBit x i)
+    clearBit' x          i          = clearBit_ x i
 
-    complement' x = complement_ x
+    testBit' (VConst x) (VConst i) = VConst (testBit x i)
+    testBit' x          i          = testBit_ x i
 
-    shiftL' x 0 = x
-    shiftL' x i = x `shiftL_` i
+    complementBit' (VConst x) (VConst i) = VConst (complementBit x i)
+    complementBit' x          i          = complementBit_ x i
 
-    shiftR' x 0 = x
-    shiftR' x i = x `shiftR_` i
+    shiftL' (VConst x) (VConst i) = VConst (shiftL x i)
+    shiftL' x          0          = x
+    shiftL' x          i          = x `shiftL_` i
+
+    shiftR' (VConst x) (VConst i) = VConst (shiftR x i)
+    shiftR' x          0          = x
+    shiftR' x          i          = x `shiftR_` i
 
 -- | A fixed-point VHDL type.
 class Fixed a where

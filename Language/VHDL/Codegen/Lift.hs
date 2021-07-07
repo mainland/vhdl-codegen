@@ -70,17 +70,26 @@ class LiftBits f a where
     -- | Bitwise \"xor\"
     xor' :: Bits a => f a -> f a -> f a
 
+    -- | Reverse all the bits in the argument
+    complement' :: Bits a => f a -> f a
+
+    -- | Value with all bits zero
+    zeroBits' :: f a
+
     -- | Value with bit
     bit' :: f Int -> f a
 
     -- | Test a bit
-    testBit' :: f a -> f Int -> f Bool
-
-    -- | Test a bit
     setBit' :: f a -> f Int -> f a
 
-    -- | Reverse all the bits in the argument
-    complement' :: Bits a => f a -> f a
+    -- | Clear a bit
+    clearBit' :: f a -> f Int -> f a
+
+    -- | Complement a bit
+    complementBit' :: f a -> f Int -> f a
+
+    -- | Test a bit
+    testBit' :: f a -> f Int -> f Bool
 
     -- | Arithmetic shift left
     shiftL' :: Bits a => f a -> f Int -> f a
