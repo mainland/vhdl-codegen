@@ -13,5 +13,4 @@ test : rtl/incrementer.vhd tb_incrementer.vhd
 	./run.py
 
 rtl/incrementer.vhd tb_incrementer.vhd : Main.hs
-	$(RUNGHC) $< -- -s -o rtl/incrementer.vhd -t tb_incrementer.vhd || rm -f rtl/incrementer.vhd tb_incrementer.vhd
-
+	stack run incrementer -- -s -o rtl/incrementer.vhd -t tb_incrementer.vhd || rm -f rtl/incrementer.vhd tb_incrementer.vhd
