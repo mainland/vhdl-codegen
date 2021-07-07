@@ -294,6 +294,15 @@ instance (KnownNat m, KnownNat f) => DeepBits (UQ m f) where
 
     toSLV e = [vname|funname to_slv($e)|]
 
+instance (KnownNat m, KnownNat f) => DeepBits (Q m f) where
+    fromSLV e = VExp [vexp|to_sfixed($e, $int:(m), $int:(-f))|]
+      where
+        m, f :: Integer
+        m = natVal (Proxy :: Proxy m)
+        f = natVal (Proxy :: Proxy f)
+
+    toSLV e = [vname|funname to_slv($e)|]
+
 instance (DeepBits a, ToExp a) => LiftBits VExp a where
     finiteBitSize' _ = finiteBitSize (undefined ::a)
 
