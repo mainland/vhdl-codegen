@@ -435,14 +435,14 @@ piter entity f g h names snames n = do
                     when [vexp|arrname ready(0)|] $ do
                       x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
                       result <- unpack <$> g (f x) 0
-                      zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
+                      zipWithM_ (\(v, _) e -> sigassign [vname|arrname $id:v(0)|] e) state_vars result
                       append [vstm|valid(0) <= in_valid;|]
 
                     forS "i" [vrange|1 to $(n-1)|] $ \i -> do
                         when [vexp|arrname ready($i)|] $ do
                           x <- pack (map (\(v, tau) -> ([vexp|arrname $id:v($i-1)|], tau)) state_vars)
                           result <- unpack <$> g x (VExp i)
-                          zipWithM_ (\(v, _) e -> append [vstm|$id:v($i) <= $e;|]) state_vars result
+                          zipWithM_ (\(v, _) e -> sigassign [vname|arrname $id:v($i)|] e) state_vars result
                           append [vstm|valid($i) <= arrname valid($i-1);|]
 
         append [vcstm|ready($(n-1)) <= out_ready or not valid($(n-1));|]
@@ -457,7 +457,7 @@ piter entity f g h names snames n = do
         append [vcstm|in_ready <= ready(0);|]
 
         z <- pack [([vexp|arrname $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
-        zipWithM_ (\(v, _) e -> append [vcstm|$id:(out_ v) <= $e;|]) out_vars (unpack (h z))
+        zipWithM_ (\(v, _) e -> sigcassign [vname|$id:(out_ v)|] e) out_vars (unpack (h z))
 
         append [vcstm|out_valid <= valid(valid'high);|]
     return Pipeline { pipe_context = ctx
@@ -522,19 +522,19 @@ piter' entity f g h names snames n = do
                   else when [vexp|out_ready|] $ do
                     do x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
                        result <- unpack <$> g (f x) 0
-                       zipWithM_ (\(v, _) e -> append [vstm|$id:v(0) <= $e;|]) state_vars result
+                       zipWithM_ (\(v, _) e -> sigassign [vname|arrname $id:v(0)|] e) state_vars result
 
                     forS "i" [vrange|1 to $(n-1)|] $ \i -> do
                       x <- pack (map (\(v, tau) -> ([vexp|arrname $id:v($i-1)|], tau)) state_vars)
                       result <- unpack <$> g x (VExp i)
-                      zipWithM_ (\(v, _) e -> append [vstm|$id:v($i) <= $e;|]) state_vars result
+                      zipWithM_ (\(v, _) e -> sigassign [vname|arrname $id:v($i)|] e) state_vars result
 
                     append [vstm|valid <= valid(valid'high - 1 downto valid'low) & in_valid;|]
 
         append [vcstm|in_ready <= out_ready;|]
 
         z <- pack [([vexp|arrname $id:v($(n-1))|], tau) | (v, tau) <- state_vars]
-        zipWithM_ (\(v, _) e -> append [vcstm|$id:(out_ v) <= $e;|]) out_vars (unpack (h z))
+        zipWithM_ (\(v, _) e -> sigcassign [vname|$id:(out_ v)|] e) out_vars (unpack (h z))
 
         append [vcstm|out_valid <= valid(valid'high);|]
     return Pipeline { pipe_context = ctx
