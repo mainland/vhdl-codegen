@@ -6,6 +6,8 @@ Language/VHDL/Parser/Parser.info
 bin/cordic
 bin/parser
 dist-newstyle/
+venv/
+vunit_out/
 stack.yaml.lock
 vivado*.jou
 vivado*.log
