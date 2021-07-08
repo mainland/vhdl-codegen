@@ -320,7 +320,7 @@ var :: MonadCg m
 var v tau Nothing    = append [vdecl|variable $id:v : $ty:tau;|]
 var v tau (Just ini) = append [vdecl|variable $id:v : $ty:tau := $ini;|]
 
--- | Add a sig declaration
+-- | Add a signal declaration
 sig :: MonadCg m
     => Id        -- ^ Signal name
     -> Subtype   -- ^ Signal type
@@ -328,6 +328,12 @@ sig :: MonadCg m
     -> m ()
 sig v tau Nothing    = append [vdecl|signal $id:v : $ty:tau;|]
 sig v tau (Just ini) = append [vdecl|signal $id:v : $ty:tau := $ini;|]
+
+-- | Add signal declarations
+sigs :: MonadCg m
+     => [(Id, Subtype)] -- ^ Signal names and types
+     -> m ()
+sigs = mapM_ (\(v, tau) -> sig v tau Nothing)
 
 -- | Generate a temporary variable
 temp :: (ToType a, MonadCg m)
