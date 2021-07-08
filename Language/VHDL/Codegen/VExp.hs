@@ -17,6 +17,7 @@
 
 module Language.VHDL.Codegen.VExp where
 
+import Data.Bit
 import Data.Bits
 import Data.Fixed.Q ( Q, UQ )
 import Data.Loc ( (<-->), Loc(NoLoc), Located(locOf) )
@@ -314,6 +315,27 @@ class FiniteBits a => DeepBits a where
     shiftR_ :: VExp a -> VExp Int -> VExp a
     x `shiftR_` i = VExp [vexp|$x sra $i|]
 
+instance DeepBits Bit where
+    fromSLV_ = error "Bit: cannot convert std_logic_vector to bit"
+
+    toSLV_ _ = error "Bit: cannot convert bit to std_logic_vector"
+
+    zeroBits_ = VConst 0
+
+    bit_ _ = VConst 1
+
+    setBit_ _ _ = VConst 1
+
+    clearBit_ _ _ = VConst 0
+
+    complementBit_ x _ = fromSLV_ [vexp|not $x|]
+
+    testBit_ x _ = VIfte (VExp [vexp|$x = '1'|]) (lift True) (lift False)
+
+    _ `shiftL_` _ = VConst 0
+
+    _ `shiftR_` _ = VConst 0
+
 instance (KnownNat m, KnownNat f) => DeepBits (UQ m f) where
     fromSLV_ e = VExp [vexp|to_ufixed($e, $int:(m-1), $int:(-f))|]
       where
@@ -397,6 +419,11 @@ class Lift t where
 
 instance Lift Bool where
     type Lifted Bool = VExp Bool
+
+    lift = VConst
+
+instance Lift Bit where
+    type Lifted Bit = VExp Bit
 
     lift = VConst
 
