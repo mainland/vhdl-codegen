@@ -17,8 +17,9 @@ module Opt (
   defaultMainWith
 ) where
 
-import Control.Monad ( when )
+import Control.Monad ( void, when )
 import Control.Monad.IO.Class ( liftIO )
+import Control.Monad.Trans.Maybe
 import Data.Foldable ( toList )
 import Data.Sequence ( Seq )
 import System.Console.GetOpt
@@ -32,7 +33,7 @@ import System.IO ( stderr, IOMode(WriteMode), hPutStrLn, withFile )
 import Text.PrettyPrint.Mainland ( hPutDoc )
 import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
-import Language.VHDL.Codegen.Monad ( evalCg, Cg )
+import Language.VHDL.Codegen.Monad ( Cg, evalCg, writeDesignUnit )
 import Language.VHDL.Codegen.Pipeline ( Pipeline )
 import Language.VHDL.Codegen.Testbench ( TextIO )
 import qualified Language.VHDL.Codegen.Pipeline.Testbench as TB
@@ -94,6 +95,9 @@ defaultMain :: (Config -> Cg (Seq V.DesignUnit, SomePipeline))
 defaultMain f = do
     defaultMainWith defaultConfig f
 
+liftMaybe :: Monad m => Maybe a -> MaybeT m a
+liftMaybe = MaybeT . return
+
 defaultMainWith :: Config
                 -> (Config -> Cg (Seq V.DesignUnit, SomePipeline))
                 -> IO ()
@@ -101,23 +105,15 @@ defaultMainWith conf0 f = do
     (conf, _args) <- getArgs >>= parseOpts conf0
     when (not (help conf)) $ do
       (unit, p) <- evalCg $ f conf
-      writeModule conf unit
+      runMaybeT $ do
+         path <- liftMaybe $ output conf
+         writeDesignUnit path unit
       case p of
-        SomePipeline p' -> writeTestBench conf p'
-  where
-    writeModule :: Config -> Seq V.DesignUnit -> IO ()
-    writeModule conf unit =
-      case output conf of
-        Nothing   -> return ()
-        Just path -> liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))
-
-    writeTestBench :: (TextIO a, TextIO b) => Config -> Pipeline a b -> IO ()
-    writeTestBench conf p =
-      case tb_output conf of
-        Nothing   -> return ()
-        Just path -> do let tbconf = TB.defaultTestBenchConfig { TB.tb_entity   = tb_entity conf
-                                                               , TB.tb_watchdog = tb_watchdog conf
-                                                               , TB.tb_compare  = tb_compare conf
-                                                               }
-                        tb_unit <- evalCg $ TB.vunitTestBench tbconf p
-                        withFile path WriteMode $ \h -> hPutDoc h (ppr tb_unit)
+        SomePipeline p' ->
+          void $ runMaybeT $ do
+            path <- liftMaybe $ tb_output conf
+            let tbconf = TB.defaultTestBenchConfig { TB.tb_entity   = tb_entity conf
+                                                   , TB.tb_watchdog = tb_watchdog conf
+                                                   , TB.tb_compare  = tb_compare conf
+                                                   }
+            TB.writeTestBench tbconf path p'

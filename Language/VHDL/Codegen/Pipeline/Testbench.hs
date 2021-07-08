@@ -17,23 +17,26 @@
 module Language.VHDL.Codegen.Pipeline.Testbench (
   TestBenchConfig(..),
   defaultTestBenchConfig,
+  writeTestBench,
 
   vunitTestBench,
 ) where
 
 import Prelude hiding ( id )
 
+import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Fail (MonadFail)
 import Data.List ( zip4 )
 import Data.Proxy ( Proxy(..) )
 import Data.String ( fromString )
 import Language.VHDL.Quote
 import qualified Language.VHDL.Syntax as V
-import Text.PrettyPrint.Mainland ( prettyCompact )
+import System.IO
+import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Lift
-import Language.VHDL.Codegen.Monad ( MonadCg )
+import Language.VHDL.Codegen.Monad ( MonadCg, evalCg )
 import Language.VHDL.Codegen.Pipeline
 import Language.VHDL.Codegen.Testbench
 
@@ -57,6 +60,16 @@ defaultTestBenchConfig = TestBenchConfig
   , tb_watchdog = Nothing
   , tb_compare  = True
   }
+
+-- | Write a pipeline testbench to a file.
+writeTestBench :: (TextIO a, TextIO b, MonadIO m)
+               => TestBenchConfig
+               -> FilePath
+               -> Pipeline a b
+               -> m ()
+writeTestBench config path p = do
+    tb_unit <- liftIO $ evalCg $ vunitTestBench config p
+    liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr tb_unit)
 
 -- | Create a VUnit testbench module for a pipeline.
 vunitTestBench :: forall a b m . (TextIO a, TextIO b, MonadCg m)

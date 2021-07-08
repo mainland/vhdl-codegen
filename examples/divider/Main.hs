@@ -62,15 +62,13 @@ main = do
       (unit, p :: Pipeline (VExp N, VExp N) (VExp N, VExp (UQ (1+M+M) F))) <- evalCg $ nonrestoring conf
       case output conf of
         Nothing   -> return ()
-        Just path -> liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))
+        Just path -> writeDesignUnit path unit
       case tb_output conf of
         Nothing   -> return ()
-        Just path -> do unit <- evalCg $ vunitTestBench
-                                         defaultTestBenchConfig { tb_watchdog = Nothing
-                                                                , tb_entity   = "tb_divider"
-                                                                }
-                                         p
-                        withFile path WriteMode $ \h -> hPutDoc h (ppr unit)
+        Just path -> do let config = defaultTestBenchConfig { tb_watchdog = Nothing
+                                                            , tb_entity   = "tb_divider"
+                                                            }
+                        writeTestBench config path p
       when (isJust (tv_in_output conf) || isJust (tv_out_output conf)) $
         genTestVectors (Proxy :: Proxy N) conf
 

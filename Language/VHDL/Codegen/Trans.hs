@@ -23,7 +23,7 @@ import Prelude
 import Control.Monad.Exception (MonadException(..))
 import Control.Monad.Extra (notM, whenM)
 import Control.Monad.Fail (MonadFail)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Primitive (PrimMonad(..))
 import Control.Monad.Ref (MonadRef(..))
 import Control.Monad.State (MonadState(..),
@@ -45,6 +45,9 @@ import qualified Data.Set as Set
 import Data.String ( fromString )
 import Language.VHDL.Quote
 import Language.VHDL.Syntax
+import System.IO
+import Text.PrettyPrint.Mainland ( hPutDoc )
+import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Gensym
 import Language.VHDL.Codegen.Lift
@@ -358,3 +361,11 @@ instance MonadCg m => When Exp m where
     when c m = do
         (ss, _) <- collectStms m
         append [vstm|if $c then $stms:(toList ss) end if;|]
+
+-- | Write a VHDL design unit to a file.
+writeDesignUnit :: MonadIO m
+                => FilePath
+                -> Seq DesignUnit
+                -> m ()
+writeDesignUnit path unit =
+    liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr (toList unit))

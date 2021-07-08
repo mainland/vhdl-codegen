@@ -178,7 +178,8 @@ executable incrementer
     fixed-q             >= 0.1 && < 0.2,
     language-vhdl-quote >= 0.1 && < 0.2,
     mainland-pretty     >= 0.7 && < 0.8,
-    srcloc              >= 0.4 && < 0.7
+    srcloc              >= 0.4 && < 0.7,
+    transformers        >= 0.5 && < 0.6
 
   other-modules:
     Opt
