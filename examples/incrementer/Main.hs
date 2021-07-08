@@ -3,28 +3,26 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Main (
     main
   ) where
 
-import Prelude
-
 import Data.Fixed.Q ( UQ )
 import Data.Proxy ( Proxy )
 import Data.Sequence ( Seq )
 import Data.String ( fromString )
+import Language.VHDL.Quote
 import qualified Language.VHDL.Syntax as V
 import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
-import Language.VHDL.Codegen.VExp ( VExp )
-import Language.VHDL.Codegen.Pipeline.VHDL
 import Language.VHDL.Codegen.Monad
-import Language.VHDL.Quote (ToType)
+import Language.VHDL.Codegen.Pipeline.VHDL
+import Language.VHDL.Codegen.VExp
 
 import Opt
 
