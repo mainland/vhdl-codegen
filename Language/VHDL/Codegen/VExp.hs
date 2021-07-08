@@ -400,6 +400,11 @@ instance Lift Bool where
 
     lift = VConst
 
+instance Lift Int where
+    type Lifted Int = VExp Int
+
+    lift = VConst
+
 instance (KnownNat m, KnownNat f) => Lift (Q m f) where
     type Lifted (Q m f) = VExp (Q m f)
 
