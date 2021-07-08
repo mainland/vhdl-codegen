@@ -546,6 +546,141 @@ piter' entity f g h names snames n = do
     reset :: m ()
     reset = append [vstm|valid <= (others => '0');|]
 
+-- | Construct a Moore machine pipeline stage with state @s@, input @i@, and
+-- output @o@.
+moore :: forall s i o m . (Pack s, Pack i, Pack o, MonadCg m)
+      => Id            -- ^ Name of VHDL entity
+      -> (s -> i -> s) -- ^ Moore machine state transfer function
+      -> (s -> o)      -- ^ Moore machine output function
+      -> s             -- ^ Initial state
+      -> m (Pipeline i o)
+moore entity step out state0 = do
+    (state :: s, state_vars) <- genPack ([] :: [String])
+    (_ :: i, in_vars)        <- genPack ([] :: [String])
+    (_ :: o, out_vars)       <- genPack ([] :: [String])
+
+    addTypeContext [vtype|std_logic|]
+    mapM_ addTypeContext [tau | (_, tau) <- state_vars]
+    mapM_ addTypeContext [tau | (_, tau) <- in_vars]
+    mapM_ addTypeContext [tau | (_, tau) <- out_vars]
+
+    let in_idecls  = [[videcl|$id:(in_ v) : in $ty:tau|]   | (v, tau) <- in_vars]
+        out_idecls = [[videcl|$id:(out_ v) : out $ty:tau|] | (v, tau) <- out_vars]
+
+    ctx <- gets context
+    append [vunit|
+      entity $id:entity is
+        port (clk : in std_logic;
+              rst : in std_logic;
+              in_ready : out std_logic;
+              in_valid : in std_logic;
+              $idecls:in_idecls;
+              out_ready : in std_logic;
+              out_valid : out std_logic;
+              $idecls:out_idecls);
+      end;|]
+
+    withArchitecture "behavioral" (toName entity noLoc) $ do
+        -- Declare state
+        sigs state_vars
+
+        -- Declare (state) valid flag
+        sig "valid" [vtype|std_logic|] Nothing
+
+        -- Update state
+        withProcess ["clk"] $ do
+            onRisingEdge $ do
+                if [vexp|rst = '1'|] then do
+                  zipWithM_ sigassign (map fst state_vars) (unpack state0)
+                  append [vstm|valid <= '0';|]
+                else if [vexp|in_ready = '1' and in_valid = '1'|] then do
+                  x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
+                  let state' = unpack $ step state x
+                  zipWithM_ sigassign (map fst state_vars) state'
+                  append [vstm|valid <= '1';|]
+                else when [vexp|out_ready = '1'|] $
+                  append [vstm|valid <= '0';|]
+
+        -- Update in_ready signal
+        append [vcstm|in_ready <= '1' when (valid = '0' or out_ready = '1') else
+                                  '0';|]
+
+        -- Update out_valid signal
+        append [vcstm|out_valid <= valid;|]
+
+        -- Update output
+        zipWithM_ sigcassign [out_ v | (v, _) <- out_vars] (unpack (out state))
+
+    return Pipeline { pipe_context = ctx
+                    , pipe_entity  = entity
+                    , pipe_in      = [(in_ v, tau)  | (v, tau) <- in_vars]
+                    , pipe_out     = [(out_ v, tau) | (v, tau) <- out_vars]
+                    }
+
+-- | Construct a Mealy machine pipeline stage with state @s@, input @i@, and
+-- output @o@.
+mealy :: forall s i o m . (Pack s, Pack i, Pack o, MonadCg m)
+      => Id                 -- ^ Name of VHDL entity
+      -> (s -> i -> (s, o)) -- ^ Mealy machine state transfer function
+      -> s                  -- ^ Initial state
+      -> m (Pipeline i o)
+mealy entity step state0 = do
+    (state :: s, state_vars) <- genPack ([] :: [String])
+    (_ :: i, in_vars)        <- genPack ([] :: [String])
+    (_ :: o, out_vars)       <- genPack ([] :: [String])
+
+    addTypeContext [vtype|std_logic|]
+    mapM_ addTypeContext [tau | (_, tau) <- state_vars]
+    mapM_ addTypeContext [tau | (_, tau) <- in_vars]
+    mapM_ addTypeContext [tau | (_, tau) <- out_vars]
+
+    let in_idecls  = [[videcl|$id:(in_ v) : in $ty:tau|]   | (v, tau) <- in_vars]
+        out_idecls = [[videcl|$id:(out_ v) : out $ty:tau|] | (v, tau) <- out_vars]
+
+    ctx <- gets context
+    append [vunit|
+      entity $id:entity is
+        port (clk : in std_logic;
+              rst : in std_logic;
+              in_ready : out std_logic;
+              in_valid : in std_logic;
+              $idecls:in_idecls;
+              out_ready : in std_logic;
+              out_valid : out std_logic;
+              $idecls:out_idecls);
+      end;|]
+
+    withArchitecture "behavioral" (toName entity noLoc) $ do
+        -- Declare state
+        sigs state_vars
+
+        -- Declare (state) valid flag
+        sig "valid" [vtype|std_logic|] Nothing
+
+        -- Update state
+        withProcess ["clk"] $ do
+            onRisingEdge $ do
+                if [vexp|rst = '1'|] then do
+                  zipWithM_ sigassign (map fst state_vars) (unpack state0)
+                  append [vstm|out_valid <= '0';|]
+                  append [vstm|in_ready <= '1';|]
+                else if [vexp|in_ready = '1' and in_valid = '1'|] then do
+                  x <- pack [(in_ v, tau)| (v, tau) <- in_vars]
+                  let (state', out) = step state x
+                  zipWithM_ sigassign (map fst state_vars) (unpack state')
+                  zipWithM_ sigassign [out_ v | (v, _) <- out_vars] (unpack out)
+                  append [vstm|out_valid <= '1';|]
+                  append [vstm|in_ready <= out_ready;|]
+                else when [vexp|out_ready = '1'|] $ do
+                  append [vstm|out_valid <= '0';|]
+                  append [vstm|in_ready <= '1';|]
+
+    return Pipeline { pipe_context = ctx
+                    , pipe_entity  = entity
+                    , pipe_in      = [(in_ v, tau)  | (v, tau) <- in_vars]
+                    , pipe_out     = [(out_ v, tau) | (v, tau) <- out_vars]
+                    }
+
 -- | Add necessary context for a type.
 addTypeContext :: MonadCg m => V.Subtype -> m ()
 addTypeContext [vtype|signed|] = do
