@@ -22,7 +22,7 @@ import Text.PrettyPrint.Mainland
 import Text.PrettyPrint.Mainland.Class
 
 import Language.VHDL.Codegen.VExp ( VExp )
-import Language.VHDL.Codegen.Pipeline
+import Language.VHDL.Codegen.Pipeline.VHDL
 import Language.VHDL.Codegen.Monad
 import Language.VHDL.Quote (ToType)
 

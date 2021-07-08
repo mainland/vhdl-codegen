@@ -58,7 +58,9 @@ library
     Language.VHDL.Codegen.Monad
     Language.VHDL.Codegen.Pack
     Language.VHDL.Codegen.Pipeline
-    Language.VHDL.Codegen.Pipeline.Testbench
+    Language.VHDL.Codegen.Pipeline.Shallow
+    Language.VHDL.Codegen.Pipeline.VHDL
+    Language.VHDL.Codegen.Pipeline.VHDL.Testbench
     Language.VHDL.Codegen.SLV
     Language.VHDL.Codegen.Testbench
     Language.VHDL.Codegen.Trans

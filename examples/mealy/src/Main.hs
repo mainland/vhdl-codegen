@@ -18,8 +18,8 @@ import Data.Sequence ( Seq )
 import Language.VHDL.Quote (ToType)
 import qualified Language.VHDL.Syntax as V
 
-import Language.VHDL.Codegen.Pipeline
-import Language.VHDL.Codegen.Pipeline.Testbench
+import Language.VHDL.Codegen.Pipeline.VHDL
+import Language.VHDL.Codegen.Pipeline.VHDL.Testbench
 import Language.VHDL.Codegen.Monad
 import Language.VHDL.Codegen.VExp
 

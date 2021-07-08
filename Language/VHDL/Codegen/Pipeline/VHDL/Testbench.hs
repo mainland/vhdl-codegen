@@ -9,12 +9,12 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- |
--- Module      :  Language.VHDL.Codegen.Testbench
+-- Module      :  Language.VHDL.Codegen.Pipeline.VHDL.Testbench
 -- Copyright   :  (c) 2021 Drexel University
 -- License     :  BSD-style
 -- Maintainer  :  mainland@drexel.edu
 
-module Language.VHDL.Codegen.Pipeline.Testbench (
+module Language.VHDL.Codegen.Pipeline.VHDL.Testbench (
   TestBenchConfig(..),
   defaultTestBenchConfig,
   writeTestBench,
@@ -37,7 +37,7 @@ import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Lift
 import Language.VHDL.Codegen.Monad ( MonadCg, evalCg )
-import Language.VHDL.Codegen.Pipeline
+import Language.VHDL.Codegen.Pipeline.VHDL
 import Language.VHDL.Codegen.Testbench
 
 idName :: V.Id -> String

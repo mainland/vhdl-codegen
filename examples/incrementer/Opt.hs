@@ -34,9 +34,9 @@ import Text.PrettyPrint.Mainland ( hPutDoc )
 import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Monad ( Cg, evalCg, writeDesignUnit )
-import Language.VHDL.Codegen.Pipeline ( Pipeline )
+import Language.VHDL.Codegen.Pipeline.VHDL ( Pipeline )
 import Language.VHDL.Codegen.Testbench ( TextIO )
-import qualified Language.VHDL.Codegen.Pipeline.Testbench as TB
+import qualified Language.VHDL.Codegen.Pipeline.VHDL.Testbench as TB
 import qualified Language.VHDL.Syntax as V
 
 data Variant = Serial | Parallel | ParallelBubbles

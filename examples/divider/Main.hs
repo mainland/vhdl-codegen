@@ -42,8 +42,8 @@ import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Lift
 import Language.VHDL.Codegen.Monad
-import Language.VHDL.Codegen.Pipeline
-import Language.VHDL.Codegen.Pipeline.Testbench
+import Language.VHDL.Codegen.Pipeline.VHDL
+import Language.VHDL.Codegen.Pipeline.VHDL.Testbench
 import Language.VHDL.Codegen.Testbench
 import Language.VHDL.Codegen.VExp
 
