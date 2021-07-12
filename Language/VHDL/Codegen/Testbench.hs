@@ -15,7 +15,8 @@
 -- Maintainer  :  mainland@drexel.edu
 
 module Language.VHDL.Codegen.Testbench (
-  TextIO(..)
+  TextIO(..),
+  VUnit(..)
 ) where
 
 import Prelude hiding ( id )
@@ -30,7 +31,7 @@ import Data.Fixed.Q ( Q, UQ )
 import Data.Proxy ( Proxy(..) )
 import Data.String ( fromString )
 import GHC.TypeLits ( KnownNat, natVal )
-import Language.VHDL.Quote ( vexp, vtype, ToExp )
+import Language.VHDL.Quote ( ToExp(..), vexp, vtype )
 import qualified Language.VHDL.Syntax as V
 
 import Language.VHDL.Codegen.VExp ( VExp )
@@ -51,8 +52,18 @@ class TextIO a where
   -- | Monadic version of fromTextIO.
   fromTextIOM :: (ToExp e, MonadFail m) => Proxy a -> StateT [e] m [V.Exp]
 
-  -- | Monadic version of toTextIOM.
+  -- | Monadic version of toTextIO.
   toTextIOM :: (ToExp e, MonadFail m) => Proxy a -> StateT [e] m [V.Exp]
+
+-- | A type that can be used with the VUnit library
+class TextIO a => VUnit a where
+  -- | Convert unpacked value of type 'a' to values that can be compared with
+  -- VUnit
+  toVUnitCompare :: (ToExp e, MonadFail m) => Proxy a -> [e] -> m [V.Exp]
+  toVUnitCompare p es = evalStateT (toVUnitCompareM p) es
+
+  -- | Monadic version of toVUnitCompareM.
+  toVUnitCompareM :: (ToExp e, MonadFail m) => Proxy a -> StateT [e] m [V.Exp]
 
 -- | Consume the first element of the list that is the monad's state.
 consume :: (MonadState [e] m, MonadFail m) => m e
@@ -69,6 +80,9 @@ instance (TextIO a, TextIO b) => TextIO (a, b) where
   fromTextIOM _ = (++) <$> fromTextIOM (Proxy :: Proxy a) <*> fromTextIOM (Proxy :: Proxy b)
 
   toTextIOM _ = (++) <$> toTextIOM (Proxy :: Proxy a) <*> toTextIOM (Proxy :: Proxy b)
+
+instance (VUnit a, VUnit b) => VUnit (a, b) where
+  toVUnitCompareM _ = (++) <$> toVUnitCompareM (Proxy :: Proxy a) <*> toVUnitCompareM (Proxy :: Proxy b)
 
 instance (KnownNat m, KnownNat f) => TextIO (VExp (UQ m f)) where
   ioType _ | f == 0    = [[vtype|integer|]]
@@ -89,6 +103,11 @@ instance (KnownNat m, KnownNat f) => TextIO (VExp (UQ m f)) where
       e <- consume
       return [[vexp|to_real($e)|]]
 
+instance (KnownNat m, KnownNat f) => VUnit (VExp (UQ m f)) where
+  toVUnitCompareM _ = do
+      e <- consume
+      return [[vexp|to_slv($e)|]]
+
 instance (KnownNat m, KnownNat f) => TextIO (VExp (Q m f)) where
   ioType _ | f == 0    = [[vtype|integer|]]
            | otherwise = [[vtype|real|]]
@@ -107,3 +126,9 @@ instance (KnownNat m, KnownNat f) => TextIO (VExp (Q m f)) where
   toTextIOM _ = do
       e <- consume
       return [[vexp|to_real($e)|]]
+
+instance (KnownNat m, KnownNat f) => VUnit (VExp (Q m f)) where
+  toVUnitCompareM _ = do
+      e <- consume
+      return [[vexp|to_slv($e)|]]
+

@@ -26,7 +26,7 @@ import Prelude hiding ( id )
 
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Fail (MonadFail)
-import Data.List ( zip4 )
+import Data.List ( zip6 )
 import Data.Proxy ( Proxy(..) )
 import Data.String ( fromString )
 import Language.VHDL.Quote
@@ -62,7 +62,7 @@ defaultTestBenchConfig = TestBenchConfig
   }
 
 -- | Write a pipeline testbench to a file.
-writeTestBench :: (TextIO a, TextIO b, MonadIO m)
+writeTestBench :: (VUnit a, VUnit b, MonadIO m)
                => TestBenchConfig
                -> FilePath
                -> Pipeline a b
@@ -72,7 +72,7 @@ writeTestBench config path p = do
     liftIO $ withFile path WriteMode $ \h -> hPutDoc h (ppr tb_unit)
 
 -- | Create a VUnit testbench module for a pipeline.
-vunitTestBench :: forall a b m . (TextIO a, TextIO b, MonadCg m)
+vunitTestBench :: forall a b m . (VUnit a, VUnit b, MonadCg m)
                => TestBenchConfig
                -> Pipeline a b
                -> m [V.DesignUnit]
@@ -310,18 +310,22 @@ end architecture test;
         genReadStms = do
             read_vals     <- fromTextIO (Proxy :: Proxy b) read_vs
             expected_vals <- toTextIO (Proxy :: Proxy b) out_sigs
-            return $ go $ zip4 out_sigs read_vs read_vals expected_vals
+
+            read_comp     <- toVUnitCompare (Proxy :: Proxy b) read_vals
+            expected_comp <- toVUnitCompare (Proxy :: Proxy b) out_sigs
+
+            return $ go $ zip6 out_sigs read_vs read_vals expected_vals read_comp expected_comp
           where
-            go :: [(V.Id, V.Id, V.Exp, V.Exp)] -> [V.Stm]
+            go :: [(V.Id, V.Id, V.Exp, V.Exp, V.Exp, V.Exp)] -> [V.Stm]
             go [] = []
 
-            go ((sig, v, e, e_exp) : binds) =
+            go ((sig, v, e, e_exp, read_comp, e_comp) : binds) =
                 [vstms|read(l, $v, is_good);
                        check_equal(is_good, true, "Reading " & $lbl);
 
                        info($lbl & " = " & to_string($e_exp) & " (" & to_string($sig) & ")");
                        info($lbl & " ?= " & to_string($v) & " (" & to_string($e) & ")");
-                       check_equal(to_slv($sig), to_slv($e), "Comparing output with reference");|]
+                       check_equal($read_comp, $e_comp, "Comparing output with reference");|]
                 ++
                 if null binds
                   then []

@@ -35,7 +35,7 @@ import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 import Language.VHDL.Codegen.Monad ( Cg, evalCg, writeDesignUnit )
 import Language.VHDL.Codegen.Pipeline.VHDL ( Pipeline )
-import Language.VHDL.Codegen.Testbench ( TextIO )
+import Language.VHDL.Codegen.Testbench ( VUnit )
 import qualified Language.VHDL.Codegen.Pipeline.VHDL.Testbench as TB
 import qualified Language.VHDL.Syntax as V
 
@@ -88,7 +88,7 @@ parseOpts conf argv = do
                        return (o,n)
       (_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
 
-data SomePipeline = forall a b. (TextIO a, TextIO b) => SomePipeline (Pipeline a b)
+data SomePipeline = forall a b. (VUnit a, VUnit b) => SomePipeline (Pipeline a b)
 
 defaultMain :: (Config -> Cg (Seq V.DesignUnit, SomePipeline))
             -> IO ()
