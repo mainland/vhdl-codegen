@@ -18,7 +18,8 @@
 
 module Language.VHDL.Codegen.Instances () where
 
-import Data.Bit ( Bit )
+import Control.Monad ( replicateM )
+import Data.Bit ( Bit(Bit) )
 import Data.Bits
     ( Bits((.&.), (.|.), xor, complement, zeroBits, bit, setBit,
            clearBit, testBit, bitSizeMaybe, bitSize, isSigned, shiftL, shiftR,
@@ -26,6 +27,7 @@ import Data.Bits
       FiniteBits(finiteBitSize) )
 import Data.Finite ( finite )
 import Data.Fixed.Q ( Q, UQ )
+import Data.Maybe ( fromJust )
 import Data.Proxy ( Proxy(..) )
 import Data.Type.Equality ( type (:~:)(..) )
 import qualified Data.Vector.Sized as S
@@ -40,6 +42,7 @@ import GHC.TypeLits
 import Language.VHDL.Quote
     ( bitsL, vexp, vtype, ToExp(..), ToLit(..), ToType(..) )
 import qualified Language.VHDL.Syntax as V
+import Test.QuickCheck ( Arbitrary(..) )
 import Text.PrettyPrint.Mainland ( text )
 import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
@@ -183,3 +186,12 @@ instance (KnownNat m, KnownNat f) => ToExp (UQ m f) where
         m, f :: Integer
         m = natVal (Proxy :: Proxy m)
         f = natVal (Proxy :: Proxy f)
+
+instance Arbitrary Bit where
+    arbitrary = Bit <$> arbitrary
+
+instance (Arbitrary a, KnownNat n) => Arbitrary (S.Vector n a) where
+    arbitrary = (fromJust . S.fromList) <$> replicateM n arbitrary
+      where
+        n :: Int
+        n = fromIntegral (natVal (Proxy :: Proxy n))

@@ -21,6 +21,7 @@ module Language.VHDL.Codegen.Testbench (
 
 import Prelude hiding ( id )
 
+import Data.Bit
 import Control.Monad.Fail (MonadFail)
 import Control.Monad.State (MonadState,
                             StateT,
@@ -28,6 +29,7 @@ import Control.Monad.State (MonadState,
                             get,
                             put)
 import Data.Fixed.Q ( Q, UQ )
+import Data.Loc ( noLoc )
 import Data.Proxy ( Proxy(..) )
 import Data.String ( fromString )
 import GHC.TypeLits ( KnownNat, natVal )
@@ -35,6 +37,7 @@ import Language.VHDL.Quote ( ToExp(..), vexp, vtype )
 import qualified Language.VHDL.Syntax as V
 
 import Language.VHDL.Codegen.VExp ( VExp )
+import Language.VHDL.Codegen.SLV
 
 -- | A type that can be used with the VHDL std.textio library.
 class TextIO a where
@@ -131,4 +134,39 @@ instance (KnownNat m, KnownNat f) => VUnit (VExp (Q m f)) where
   toVUnitCompareM _ = do
       e <- consume
       return [[vexp|to_slv($e)|]]
+
+instance TextIO (VExp Bit) where
+  ioType _ = [[vtype|std_logic|]]
+
+  fromTextIOM _ = do
+      e <- consume
+      return [toExp e noLoc]
+
+  toTextIOM _ = do
+      e <- consume
+      return [toExp e noLoc]
+
+instance VUnit (VExp Bit) where
+  toVUnitCompareM _ = do
+      e <- consume
+      return [[vexp|$e|]]
+
+instance KnownNat n => TextIO (VExp (SLV n)) where
+  ioType _ = [[vtype|std_logic_vector($int:(n-1) downto 0)|]]
+    where
+      n :: Integer
+      n = natVal (Proxy :: Proxy n)
+
+  fromTextIOM _ = do
+      e <- consume
+      return [toExp e noLoc]
+
+  toTextIOM _ = do
+      e <- consume
+      return [toExp e noLoc]
+
+instance KnownNat n => VUnit (VExp (SLV n)) where
+  toVUnitCompareM _ = do
+      e <- consume
+      return [[vexp|$e|]]
 

@@ -83,6 +83,7 @@ vunitTestBench conf p = do
   return [vfile|
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_textio.all;
 use ieee.numeric_std.all;
 use ieee.fixed_pkg.all;
 
