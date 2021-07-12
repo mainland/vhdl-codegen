@@ -1,0 +1,8 @@
+.Xil/
+project_1/
+venv/
+vunit_out
+data/n.csv
+data/out.csv
+rtl/encoder.vhd
+tb_encoder.vhd
