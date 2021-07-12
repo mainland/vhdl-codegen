@@ -18,19 +18,30 @@
 
 module Language.VHDL.Codegen.Instances () where
 
-import Data.Bit
+import Data.Bit ( Bit )
 import Data.Bits
-import Data.Finite
+    ( Bits((.&.), (.|.), xor, complement, zeroBits, bit, setBit,
+           clearBit, testBit, bitSizeMaybe, bitSize, isSigned, shiftL, shiftR,
+           rotateL, rotateR, popCount),
+      FiniteBits(finiteBitSize) )
+import Data.Finite ( finite )
 import Data.Fixed.Q ( Q, UQ )
 import Data.Proxy ( Proxy(..) )
 import Data.Type.Equality ( type (:~:)(..) )
 import qualified Data.Vector.Sized as S
-import GHC.Real
+import GHC.Real ( overflowError )
 import GHC.TypeLits
+    ( KnownNat,
+      type (+),
+      natVal,
+      someNatVal,
+      sameNat,
+      SomeNat(SomeNat) )
 import Language.VHDL.Quote
+    ( bitsL, vexp, vtype, ToExp(..), ToLit(..), ToType(..) )
 import qualified Language.VHDL.Syntax as V
-import Text.PrettyPrint.Mainland
-import Text.PrettyPrint.Mainland.Class
+import Text.PrettyPrint.Mainland ( text )
+import Text.PrettyPrint.Mainland.Class ( Pretty(ppr) )
 
 overflowFail :: Maybe a -> a
 overflowFail = maybe overflowError id
