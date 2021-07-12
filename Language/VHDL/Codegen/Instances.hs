@@ -139,7 +139,7 @@ instance ToType (Proxy Bit) where
     toType _ _ = [vtype|std_logic|]
 
 instance KnownNat n => ToType (Proxy (S.Vector n Bit)) where
-    toType _ _ = [vtype|std_logic_vector(0 to $int:(n-1))|]
+    toType _ _ = [vtype|std_logic_vector($int:(n-1) downto 0)|]
       where
         n = natVal (Proxy :: Proxy n)
 

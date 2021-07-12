@@ -65,7 +65,7 @@ liftVec v = case reifyVec v of
               Just v' -> VConst v'
               Nothing -> case isZeroNat @n of
                            Just Refl -> VConst S.empty
-                           Nothing   -> VExp $ toExp (foldl1' (\e1 e2 -> VExp [vexp|$e1 & $e2|]) es) noLoc
+                           Nothing   -> VExp $ toExp (foldl1' (\e1 e2 -> VExp [vexp|$e2 & $e1|]) es) noLoc
   where
     es :: [VExp a]
     es = S.toList v
@@ -99,7 +99,7 @@ last v | V.VarE n _ <- e = VExp [vexp|arrname $name:n($name:(n)'length-1)|]
 
 init :: (KnownNat n, ToExp (Vec n a)) => VExp (Vec (n+1) a) -> VExp (Vec n a)
 init (VConst v)          = VConst $ S.init v
-init v | V.VarE n _ <- e = VExp [vexp|arrname $name:n(0 to $name:(n)'length-2)|]
+init v | V.VarE n _ <- e = VExp [vexp|arrname $name:n($name:(n)'length-2 downto 0)|]
        | otherwise       = error $ "Cannot index: " P.++ show e
   where
     e :: V.Exp
@@ -107,7 +107,7 @@ init v | V.VarE n _ <- e = VExp [vexp|arrname $name:n(0 to $name:(n)'length-2)|]
 
 tail :: (KnownNat n, ToExp (Vec n a)) => VExp (Vec (n+1) a) -> VExp (Vec n a)
 tail (VConst v)          = VConst $ S.tail v
-tail v | V.VarE n _ <- e = VExp [vexp|arrname $name:n(1 to $name:(n)'length-1)|]
+tail v | V.VarE n _ <- e = VExp [vexp|arrname $name:n($name:(n)'length-1 downto 1)|]
        | otherwise       = error $ "Cannot index: " P.++ show e
   where
     e :: V.Exp
@@ -115,17 +115,17 @@ tail v | V.VarE n _ <- e = VExp [vexp|arrname $name:n(1 to $name:(n)'length-1)|]
 
 cons :: (KnownNat n, ToExp (Vec (1+n) a)) => VExp a -> VExp (Vec n a) -> VExp (Vec (1+n) a)
 cons (VConst x) (VConst xs) = VConst $ S.cons x xs
-cons x          xs          = VExp [vexp|$x & $xs|]
+cons x          xs          = VExp [vexp|$xs & $x|]
 
 snoc :: (KnownNat n, ToExp (Vec (n+1) a)) => VExp (Vec n a) -> VExp a -> VExp (Vec (n+1) a)
 snoc (VConst xs) (VConst x) = VConst $ S.snoc xs x
-snoc xs          x          = VExp [vexp|$xs & $x|]
+snoc xs          x          = VExp [vexp|$x & $xs|]
 
 infixr 5 ++
 
 (++) :: (KnownNat n, ToExp (Vec (n+m) a)) => VExp (Vec n a) -> VExp (Vec m a) -> VExp (Vec (n+m) a)
 VConst xs ++ VConst ys = VConst $ xs S.++ ys
-xs        ++ ys        = VExp [vexp|$xs & $ys|]
+xs        ++ ys        = VExp [vexp|$ys & $xs|]
 
 replicate :: forall n a. (KnownNat n, ToExp (S.Vector n a))
           => VExp a
@@ -143,7 +143,7 @@ map :: forall n a b. (KnownNat n, ToExp a, ToExp (S.Vector n b))
 map f (VConst v) = liftVec $ S.map (f . VConst) v
 map f v          = case isZeroNat @n of
                      Just Refl -> VConst S.empty
-                     Nothing   -> VExp $ toExp (foldl1' (\e1 e2 -> VExp [vexp|$e1 & $e2|]) es) noLoc
+                     Nothing   -> VExp $ toExp (foldl1' (\e1 e2 -> VExp [vexp|$e2 & $e1|]) es) noLoc
   where
     n :: Int
     n = fromIntegral (natVal (Proxy :: Proxy n))
