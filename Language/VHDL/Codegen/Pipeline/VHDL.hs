@@ -27,12 +27,15 @@ import Control.Category (Category(..))
 import Control.Monad (forM_,
                       zipWithM_)
 import Control.Monad.State (gets)
+import Data.Bit ( Bit )
 import Data.Bits ( Bits(shift) )
 import Data.Char (toLower)
 import Data.Loc (noLoc)
+import Data.Proxy ( Proxy(..) )
 import Data.Sequence (Seq)
 import Data.String (fromString)
 import Data.Symbol
+import GHC.TypeLits ( KnownNat, natVal )
 import Language.VHDL.Quote
 import Language.VHDL.Syntax as V
 
@@ -41,6 +44,7 @@ import Language.VHDL.Codegen.Lift
 import Language.VHDL.Codegen.Monad
 import qualified Language.VHDL.Codegen.Pipeline as P
 import Language.VHDL.Codegen.Pack
+import Language.VHDL.Codegen.SLV ( SLV )
 import Language.VHDL.Codegen.VExp
 
 -- | A VHDL pipeline.
@@ -730,6 +734,81 @@ mealy entity step state0 = do
                     , pipe_in      = [(in_ v, tau)  | (v, tau) <- in_vars]
                     , pipe_out     = [(out_ v, tau) | (v, tau) <- out_vars]
                     }
+
+-- | Serialize std_logic_vector elements
+serialize :: forall n m . (KnownNat n, MonadCg m)
+          => m (Pipeline (VExp (SLV n)) (VExp Bit))
+serialize = do
+    entity <- gensym "serialize"
+
+    (_ :: VExp (SLV n), state_vars) <- genPack (["state"] :: [String])
+    (_ :: VExp (SLV n), in_vars)    <- genPack (["slv"] :: [String])
+    (_ :: VExp Bit, out_vars)       <- genPack (["bit"] :: [String])
+
+    addTypeContext [vtype|natural|]
+    addTypeContext [vtype|unsigned|]
+    addTypeContext [vtype|std_logic|]
+    addTypeContext [vtype|std_logic_vector|]
+
+    let in_idecls  = [[videcl|$id:(in_ v) : in $ty:tau|] | (v, tau) <- in_vars]
+        out_idecls = [[videcl|$id:(out_ v) : out $ty:tau|] | (v, tau) <- out_vars]
+
+    ctx <- gets context
+    append [vunit|
+      entity $id:entity is
+        port (clk : in std_logic;
+              rst : in std_logic;
+              in_ready : out std_logic;
+              in_valid : in std_logic;
+              $idecls:in_idecls;
+              out_ready : in std_logic;
+              out_valid : out std_logic;
+              $idecls:out_idecls);
+      end;|]
+
+    withArchitecture "behavioral" (toName entity noLoc) $ do
+        -- Declare loop counter and state
+        sig "i" [vtype|natural range 0 to $(n-1)|] Nothing
+        sig "valid" [vtype|std_logic|] Nothing
+        mapM_ (\(v, tau) -> sig v tau Nothing) state_vars
+
+        -- Update loop index
+        withProcess ["clk"] $ do
+            onRisingEdge $ do
+                if [vexp|rst = '1'|] then do
+                  append [vstm|i <= 0;|]
+                  append [vstm|valid <= '0';|]
+                else if [vexp|valid = '1' and out_ready = '1'|] then
+                  if [vexp|i = $(n-1)|] then do
+                    append [vstm|i <= 0;|]
+                    if [vexp|in_valid = '1'|] then
+                      zipWithM_ sigassign (map fst state_vars) [in_ v | (v, _) <- in_vars]
+                    else
+                      append [vstm|valid <= '0';|]
+                  else
+                    append [vstm|i <= i + 1;|]
+                else when [vexp|valid = '0' and in_valid = '1'|] $ do
+                  zipWithM_ sigassign (map fst state_vars) [in_ v | (v, _) <- in_vars]
+                  append [vstm|valid <= '1';|]
+
+        -- Update in_ready signal
+        append [vcstm|in_ready <= '1' when valid = '0' or (i = $int:(n-1) and out_ready = '1') else
+                                  '0';|]
+
+        -- Update out_valid signal
+        append [vcstm|out_valid <= valid;|]
+
+        -- Update output
+        append [vcstm|out_bit <= arrname state(i);|]
+
+    return Pipeline { pipe_context = ctx
+                    , pipe_entity  = entity
+                    , pipe_in      = [(in_ v, tau)  | (v, tau) <- in_vars]
+                    , pipe_out     = [(out_ v, tau) | (v, tau) <- out_vars]
+                    }
+  where
+    n :: Int
+    n = fromIntegral (natVal (Proxy :: Proxy n))
 
 -- | Add necessary context for a type.
 addTypeContext :: MonadCg m => V.Subtype -> m ()
